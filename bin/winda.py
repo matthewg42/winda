@@ -28,6 +28,36 @@ def database_reset(args):
 def database_info(args):
     log.warning('TODO: database_info')
 
+def add_files(args):
+    log.warning('TODO: add_files')
+
+def list_files(args):
+    log.warning('TODO: list_files')
+
+def remove_data(args):
+    log.warning('TODO: remove_data')
+
+def export_speeds(args):
+    log.warning('TODO: export_speeds')
+
+def export_data(args):
+    log.warning('TODO: export_data')
+
+#############
+def add_data_filters(parser):
+    parser.add_argument('--files', dest='file_filter', type=str, default=None,
+                        help='Select data that came from a specific file, or a file matching this glob pattern')
+    parser.add_argument('--date', dest='date_filter', type=str, default=None,
+                        help='Select data only from a specific date in YYMMDD format')
+    parser.add_argument('--from', dest='from', type=str, default=None,
+                        help='Select data only after a specific date/time in YYMMDD[HHMMSS] format')
+    parser.add_argument('--to', dest='to', type=str, default=None,
+                        help='Select data only up to a specific date/time in YYMMDD[HHMMSS] format')
+
+def add_files_option(parser):
+    parser.add_argument('files', metavar='filename', type=str, nargs='+',
+                   help='file names or glob pattern')
+
 if __name__ == '__main__':
     import argparse
     global args
@@ -55,11 +85,43 @@ if __name__ == '__main__':
     parser_info = subparsers.add_parser('info', help='Print information about the database file and exit')
     parser_info.set_defaults(func=database_info)
 
+    # Add command
+    parser_add = subparsers.add_parser('add', help='Add data from CSV files into the database')
+    parser_add.add_argument('files', metavar='filename', type=str, nargs='+',
+                   help='file name or glob pattern to add to database')
+    parser_add.set_defaults(func=add_files)
+
+    # Files command
+    parser_files = subparsers.add_parser('files', help='List files which have been added to the database')
+    add_files_option(parser_files)
+    parser_files.set_defaults(func=list_files)
+
+    # Remove command
+    parser_remove = subparsers.add_parser('remove', help='Remove data from the database')
+    add_data_filters(parser_remove)
+    parser_remove.set_defaults(func=remove_data)
+
+    # Speeds command
+    parser_speeds = subparsers.add_parser('speeds', help='Remove data from the database')
+    parser_speeds.add_argument('--direction-split', dest='split', action='store_const', const=True, 
+        default=False, help='Add a wind direction column to the output and perform the analysis for each wind direction found in the selected data')
+    add_data_filters(parser_speeds)
+    parser_speeds.set_defaults(func=export_speeds)
+
+    # Export command
+    parser_export = subparsers.add_parser('export', help='Remove data from the database')
+    add_data_filters(parser_export)
+    parser_export.add_argument('file', help='Specify the export file path')
+    parser_export.set_defaults(func=export_data)
+
     # create the parser for the "b" command
     # parser_b = subparsers.add_parser('b', help='b help')
     # parser_b.add_argument('--baz', choices='XYZ', help='baz help')
     args = parser.parse_args()
     init_log()
-    args.func(args)
+    if not hasattr(args, 'func'):
+        log.error('No command specified, try using --help')
+    else:
+        args.func(args)
     log.debug('END')
 

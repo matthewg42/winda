@@ -26,19 +26,226 @@ The following is adapted from an email from Dr. Little, dated 2016-01-09.
 
 A single "mega file" with all data from all CSV input files ever processed should be maintained.  
 
-#### Development Note
-
-It might be advantageous to keep all data in a DBM file indexed on the timestamp string in ISO format, or in a sqlite database indexed on the timestamp of a record. This would permit the following operations to be performed efficiently:
-
-1.  Detection of mutliple values for a single timestamp (i.e. prevent re-processing of files)
-2.  Creation of a single CSV file sorted by record date/time in an efficient manner, regardless of the order in which input files are added to the data set
-3.  Extraction of chronological slices of data
-
-## Wind Proability Distribution
+## Wind Probability Distribution (Windspeed Transform)
 
 In this case the number of times the wind is at (say) 3m/s is added up and given as a percentage of the total number of data points.  This needs to be done for wind speeds from 0-40m/s (or higher) in increments of 0.5m/s (eg if a wind speed is 10.4m/s it will go to the 10-10.5 m/s 'bin'.  I'd like this outputted as a .csv file with wind speeds and probability. This will turn the data into a much smaller amount.
 
 ## Wind Speed With Wind Direction (extra - nice to have)
 
-This means taking all the wind speed data and putting all the data from each direction into a smaller data sub set. Each direction would be analysed as per section 2, so that probability distributions can be generated for each direction.
+This means taking all the wind speed data and putting all the data from each direction into a smaller data subset. Each direction would be analysed as per section 2, so that probability distributions can be generated for each direction.
+
+
+# Proposed Implementation
+
+A single Python program named "winda.py" which will maintain a database of records added so far.  The program is command-line based, with multiple sub-command in the style of git. The syntax for the program is as follows assuming the command prompt current working directory is where the program is installed):
+
+*nix systems:
+
+    ./winda.py command [command-args]
+
+Windows:
+
+    winda.exe command [command-args]
+
+For example:
+
+    winda.exe add *.CSV
+
+
+## Synopsis
+
+Some example commands to give a quick overview of usage:
+
+    winda.exe add *.CSV
+    winda.exe files
+    winda.exe files P15*.CSV
+    winda.exe remove --file P1506*.CSV
+    winda.exe remove --date 150601
+    winda.exe speeds --date 150602 > June_2_speeds.csv
+    winda.exe speeds --date 150602 --direction-split > June_2_speeds_and_directions.csv
+    winda.exe speeds --file P150602.CSV > june_2_speeds.csv
+    winda.exe speeds --increment 5 --file P1506*.CSV > june_speeds_5ms_increments.csv
+    winda.exe speeds --range 0-30 --date 150601 > june_1_speeds_to_30_ms.csv
+    winda.exe speeds --range 20-40 --increment 0.25 --from 150601 --to 150630 > out.csv
+    winda.exe reset
+    winda.exe info
+
+## Commands
+
+### Command: add
+
+#### Syntax
+
+    winda.exe add pattern [pattern ...]
+
+#### Description
+
+Add data file(s) to the database. This command output the number of records added like this:
+
+    1440 records added from 1 file(s).
+
+#### Command arguments
+
+This command requires at least one argument - the name of a file to add, or a glob pattern which matches at least one file to add.
+
+#### Example
+
+    winda.exe add *.CSV
+
+### Command: files
+
+#### Syntax
+
+    winda.exe files [pattern]
+
+#### Description
+
+List files which have been added to the database. For example, the output might look like this:
+
+    P150603.CSV
+    P150604.CSV
+    P150605.CSV
+
+#### Command arguments
+
+This command takes an optional argument which is a glob pattern to filter the output.  If no pattern is specified, all files which have been added to the database are listed.
+
+#### Examples
+
+    winda.exe P15*.CSV
+
+### Command: remove
+
+#### Syntax
+
+    winda.exe remove|rm {filter}
+
+#### Description
+
+Remove data from from the database according to some filter critera. See section "Data Filters" below for how to use a filter.
+
+#### Command arguments
+
+The remove command must be supplied with a valid data filter. See section "Data Filters" below for how to use a filter.
+
+#### Examples
+
+    winda.exe remove --all
+    winda.exe remove --file P1506*.CSV
+    winda.exe remove --date 150601
+    winda.exe remove --from 150601 --to 150701
+
+### Command: speeds
+
+#### Syntax
+
+    winda.exe speeds [--range r] [--increment i] [--direction-split] {filter}
+
+#### Description
+
+Analyse data from the database, outputting the wind speed transform for the specified records.  The default range is 0-40 m/s, and the default increment is 0.5 m/s.
+
+#### Command arguments
+
+The speeds command must be supplied with a valid data filter. See section "Data Filters" below for how to use a filter.  
+
+The command may also take an optional "--range r" value which specifies the range of wind speeds to be output.  The --range parameter, *r* is a pair of integers (the lower and upper bound of the range), separated by a "-".  For example:
+
+    --range 0-30
+
+...means to output for the range of speeds 0 m/s to 30 m/s inclusive.
+
+The command may also take an optional "--increment i" value which specifies the increment used to split the output.  The --increment parameter, *i* is a decimal value which defines the step size, for example:
+
+    --increment=1.5
+
+...to output in 1.5 m/s steps.
+
+The command may also take an optional [--direction-split] argument, which will do one analysis per wind direction in the input data.  The output will have an addition column with the windo direction in it.
+
+#### Examples
+
+    winda.exe speed --all
+    winda.exe speed --increment 5 --file P1506*.CSV
+    winda.exe speed --date 150601
+    winda.exe speed --range 20-40 --increment 0.25 --from 150601 --to 150701
+
+### Command: reset
+
+#### Syntax
+
+    winda.exe reset
+
+#### Description
+
+Clear the database (prompts for confirmation).
+
+#### Command Arguments
+
+This command does not take any arguments.
+
+#### Example
+
+    winda.exe reset
+
+### Command: info
+
+#### Syntax
+
+    winda.exe info
+
+#### Description
+
+Show summary information about the database.  Output includes the database filename, the number of files which have been added and the number of records in the database:
+
+    Database file:          all.db
+    Size:                   13,456 bytes
+    Number of files added:  3
+    Number of records:      4320
+
+#### Command Arguments
+
+This command does not take any arguments.
+
+#### Example
+
+    winda.exe info
+
+
+## Data Filters
+
+Several arguments can be used to specify data from the database in different ways:
+
+### By File
+
+To specify data from specific files, use the --file option:
+
+    --file pattern
+
+...where *pattern* is a glob pattern which matches one or more files which have been added to the database.
+
+### By Date
+
+To specify data from a specific date, use the --date option:
+
+    --date YYMMDD
+
+...where *YYMMDD* is the date from which records are to be selected in YYMMDD format.  For example:
+
+    --date 150503
+
+...to select all records from the 3rd of May 2015.
+
+### By Date/Time Range
+
+To specify data from a period of time, use --from and --to:
+
+    --from YYMMDD[HHMMSS] --to YYMMDD[HHMMSS]
+
+Both the --from and --to allow the specification of a date/time. If the time is not required, inly the date may be specified. For example:
+
+    --from 150501 --to 150502133000
+
+...which will select records from the 1st of May 2015 through 1:30 pm on the 2nd of May 2015.
+
 

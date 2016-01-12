@@ -67,6 +67,8 @@ Some example commands to give a quick overview of usage:
     winda.exe speeds --increment 5 --file P1506*.CSV > june_speeds_5ms_increments.csv
     winda.exe speeds --range 0-30 --date 150601 > june_1_speeds_to_30_ms.csv
     winda.exe speeds --range 20-40 --increment 0.25 --from 150601 --to 150630 > out.csv
+    winda.exe export all_data.csv
+    winda.exe export -date 150601 some_data.csv
     winda.exe reset
     winda.exe info
 
@@ -118,7 +120,7 @@ This command takes an optional argument which is a glob pattern to filter the ou
 
 #### Syntax
 
-    winda.exe remove|rm {filter}
+    winda.exe remove|rm <filter>
 
 #### Description
 
@@ -139,7 +141,7 @@ The remove command must be supplied with a valid data filter. See section "Data 
 
 #### Syntax
 
-    winda.exe speeds [--range r] [--increment i] [--direction-split] {filter}
+    winda.exe speeds [--range r] [--increment i] [--direction-split] <filter>
 
 #### Description
 
@@ -169,6 +171,24 @@ The command may also take an optional [--direction-split] argument, which will d
     winda.exe speed --increment 5 --file P1506*.CSV
     winda.exe speed --date 150601
     winda.exe speed --range 20-40 --increment 0.25 --from 150601 --to 150701
+
+### Command: export
+
+#### Syntax
+
+    winda.exe export <filter> file.csv
+
+#### Description
+
+Dump data from the database into a specified file. If the file already exists, a prompt for confirmation will be displayed.
+
+#### Command Arguments
+
+This command takes one or more filter arguments, and the name of the CSV file to write to.
+
+#### Example
+
+    winda.exe export --all dump.csv
 
 ### Command: reset
 

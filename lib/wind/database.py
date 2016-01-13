@@ -53,6 +53,17 @@ class Database:
                   )
                   """)
 
+        log.debug('creating table input_file...')
+        c.execute("""
+                  CREATE TABLE input_file (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      path VARCHAR(255),
+                      import_date FLOAT,
+                      records INTEGER,
+                      errors INTEGER
+                  )
+                  """)
+
         log.debug('creating table raw_data...')
         c.execute("""
                   CREATE TABLE raw_data (
@@ -65,18 +76,8 @@ class Database:
                       direction VARCHAR(2),
                       irradiance FLOAT,
                       batt_v FLOAT,
-                      processed BOOLEAN
-                  )
-                  """)
-
-        log.debug('creating table input_file...')
-        c.execute("""
-                  CREATE TABLE input_file (
-                      id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      path VARCHAR(255),
-                      import_date FLOAT,
-                      records INTEGER,
-                      errors INTEGER
+                      processed BOOLEAN,
+                      FOREIGN KEY(file_id) REFERENCES input_file(id)
                   )
                   """)
 
@@ -97,7 +98,7 @@ class Database:
                       wind_direction VARCHAR(2),
                       irradiance_wm2 FLOAT,
                       FOREIGN KEY(ref) REFERENCES calibrations(ref),
-                      FOREIGN KEY(file_id) REFERENCES files(id)
+                      FOREIGN KEY(file_id) REFERENCES input_file(id)
                   )
                   """)
 
@@ -206,4 +207,16 @@ class Database:
         
         log.debug('creating table winda_schema_v_1_00...')
         c.execute("""CREATE TABLE winda_schema_v_1_00 (id INT UNIQUE)""")
+
+    def info(self):
+        """ Return a dict with some helpful information about the database """
+        d = dict()
+        d['Database file'] = self._path
+        d['Size'] = os.path.getsize(self._path)
+        c = self._conn.cursor()
+        c.execute("""SELECT DISTINCT id from input_file""")
+        d['Number of files added'] = len(c.fetchall())
+        c.execute("""SELECT 1 FROM events""")
+        d['Number of records'] = len(c.fetchall())
+        return d
 

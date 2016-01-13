@@ -4,6 +4,13 @@ import tempfile
 from wind.database import Database
 
 class TestDatabase(unittest.TestCase):
+    def setUp(self):
+        self.database, self.path = self.make_me_a_new_database()
+
+    def tearDown(self):
+        del(self.database)
+        os.remove(self.path)
+
     def test_create_database_creation(self):
         d, path = self.make_me_a_new_database()
         self.assertTrue(os.path.exists(path))
@@ -32,6 +39,13 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(len(c.fetchall()), 1)
         del(d)
         os.remove(path)
+
+    def test_database_info(self):
+        info = self.database.info()
+        for key in ['Database file', 'Size', 'Number of files added', 'Number of records']:
+            self.assertTrue(key in info)
+        self.assertEqual(info['Number of files added'], 0)
+        self.assertEqual(info['Number of records'], 0)
 
     # Utility functions
     def make_me_a_new_database(self):

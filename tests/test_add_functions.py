@@ -3,7 +3,7 @@ import os
 import tempfile
 from wind.database import Database
 
-class TestDatabase(unittest.TestCase):
+class TestAddFunctions(unittest.TestCase):
     def setUp(self):
         self.database, self.path = self.make_me_a_new_database()
         self.testfile = tempfile.NamedTemporaryFile(suffix='.csv', delete=False)

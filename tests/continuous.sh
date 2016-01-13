@@ -33,7 +33,7 @@ do_test () {
     for f in 1 1 1 1 1 1 1 1; do echo ''; done
     echo '################################# TEST END ################################'
     for f in 1 1 1 1 1 1 1 1; do echo ''; done
-    python3 -m rednose 2> /dev/null && $NOSETESTS --rednose || $NOSETESTS
+    python -m rednose 2> /dev/null && $NOSETESTS --rednose || $NOSETESTS
     if [ $? -eq 0 ]; then
         notify-send 'Tests passed' "Project: ${PWD##*/}" -i '/usr/share/icons/Adwaita/48x48/emotes/face-smile.png' > /dev/null 2>&1
     else
@@ -42,7 +42,7 @@ do_test () {
 }
 
 find_nosetests () {
-    for n in nosetests-3.4 nosetests-3 nosetests3 nosetests; do
+    for n in nosetests-2.7 nosetests; do
         which $n > /dev/null 2>&1
         if [ $? -eq 0 ]; then
             echo "$n"

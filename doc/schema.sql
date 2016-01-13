@@ -150,3 +150,8 @@ INSERT INTO field_mapping
         UNION ALL SELECT 'battery volts', 'batt_v'
         UNION ALL SELECT 'battery_volts', 'batt_v';
 
+-- The presence of this table can be used to check for compatibility and
+-- completeness of the schema.  This should be the last statement
+-- executed when creating the schema.
+CREATE TABLE winda_schema_v_1_00 (id INT UNIQUE);
+

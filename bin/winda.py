@@ -3,6 +3,7 @@
 import logging
 import os
 import sys
+from wind.database import Database
 
 global args
 global log
@@ -26,8 +27,11 @@ def database_reset(args):
     log.warning('TODO: database_reset')
 
 def database_info(args):
-    log.warning('TODO: database_info')
-
+    d = Database(args.database_path)
+    info = d.info()
+    for k in ['Database file', 'Size', 'Number of files added', 'Number of records']:
+        print('%-30s%s' % (k + ':', info[k]))
+    
 def add_files(args):
     log.warning('TODO: add_files')
 
@@ -42,6 +46,7 @@ def export_speeds(args):
 
 def export_data(args):
     log.warning('TODO: export_data')
+
 
 #############
 def add_data_filters(parser):

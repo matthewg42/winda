@@ -33,7 +33,6 @@ class TestDatabase(unittest.TestCase):
         del(d)
         os.remove(path)
 
-
     # Utility functions
     def make_me_a_new_database(self):
         tmpfile = tempfile.NamedTemporaryFile(suffix='.sqlite3')

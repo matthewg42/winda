@@ -220,3 +220,17 @@ class Database:
         d['Number of records'] = len(c.fetchall())
         return d
 
+    def add(self, *args):
+        """ Add a list of glob patterns or files to the datbase """
+        raise(Exception('TODO: Database.add(%s)' % args))
+        
+    def add_pattern(self, pattern):
+        """ Add a single glob pattern of files to the datbase """
+        raise(Exception('TODO: Database.add_pattern()'))
+        
+
+    def add_file(self, path):
+        """ Add a single CSV file to the database """
+        raise(Exception('TODO: Database.add_file()'))
+
+

@@ -1,6 +1,4 @@
-"""
-Provide database functionality using sqlite3
-"""
+"""Provide database functionality using sqlite3."""
 
 import sqlite3
 import os
@@ -23,6 +21,12 @@ class Database:
             self.create_schema()
 
     def schema_exists(self):
+        """
+        Test if a winda schema exists in the database at the path for this object.
+
+        Return True if the database looks like a valid winda database, else
+        return False.
+        """
         c = self._conn.cursor()
         c.execute("SELECT name FROM sqlite_master WHERE name LIKE 'winda_schema_v_%';")
         if len(c.fetchall()) == 0:
@@ -31,7 +35,7 @@ class Database:
             return True
 
     def create_schema(self):
-        """ Create a new, empty database at the specified path. """
+        """Create a new, empty database at the specified path."""
         log.debug('create_schema -> %s' % self._path)
         c = self._conn.cursor()
         log.debug('creating table calibration...')
@@ -210,7 +214,7 @@ class Database:
         c.execute("""CREATE TABLE winda_schema_v_1_00 (id INT UNIQUE)""")
 
     def info(self):
-        """ Return a dict with some helpful information about the database """
+        """Return a dict with some helpful information about the database."""
         d = dict()
         d['Database file'] = self._path
         d['Size'] = os.path.getsize(self._path)
@@ -222,16 +226,16 @@ class Database:
         return d
 
     def add(self, *args):
-        """ Add a list of glob patterns or files to the datbase """
+        """Add a list of glob patterns or files to the datbase."""
         for pattern in args:
             self.add_pattern(pattern)
         
     def add_pattern(self, pattern):
-        """ Add a single glob pattern of files to the datbase """
+        """Add a single glob pattern of files to the datbase."""
         for path in glob.glob(pattern):
             self.add_file(path)
 
     def add_file(self, path):
-        """ Add a single CSV file to the database """
+        """Add a single CSV file to the database."""
         log.warning('TODO: Database.add_file(%s)' % path)
 

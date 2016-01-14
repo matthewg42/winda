@@ -25,7 +25,11 @@ BB,12-01-2016,19:34:17,0,0,W,0.00,4.72
         os.remove(self.testfile.name)
 
     def test_add_file_single_file(self):
-        self.assertTrue(os.path.exists('/'))
+        self.database.add(self.testfile.name)
+        c = self.database._conn.cursor()
+        c.execute("""SELECT id FROM input_file WHERE path = ?""", (self.testfile.name,))
+        ids = c.fetchall()
+        self.assertEqual(len(ids), 1)
         
     # Utility functions
     def make_me_a_new_database(self):

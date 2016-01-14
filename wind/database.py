@@ -5,6 +5,7 @@ Provide database functionality using sqlite3
 import sqlite3
 import os
 import logging
+import glob
 
 log = logging
 
@@ -222,15 +223,15 @@ class Database:
 
     def add(self, *args):
         """ Add a list of glob patterns or files to the datbase """
-        raise(Exception('TODO: Database.add(%s)' % args))
+        for pattern in args:
+            self.add_pattern(pattern)
         
     def add_pattern(self, pattern):
         """ Add a single glob pattern of files to the datbase """
-        raise(Exception('TODO: Database.add_pattern()'))
-        
+        for path in glob.glob(pattern):
+            self.add_file(path)
 
     def add_file(self, path):
         """ Add a single CSV file to the database """
-        raise(Exception('TODO: Database.add_file()'))
-
+        log.warning('TODO: Database.add_file(%s)' % path)
 

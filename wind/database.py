@@ -238,4 +238,7 @@ class Database:
     def add_file(self, path):
         """Add a single CSV file to the database."""
         log.warning('TODO: Database.add_file(%s)' % path)
+        c = self._conn.cursor()
+        c.execute("""INSERT INTO input_file (path, import_date, records, errors)
+                     VALUES (?, ?, ?, ?)""", (path, '20000101', 0, 0))
 

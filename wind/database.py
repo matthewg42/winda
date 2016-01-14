@@ -86,9 +86,9 @@ class Database:
                   )
                   """)
 
-        log.debug('creating table events...')
+        log.debug('creating table event...')
         c.execute("""
-                  CREATE TABLE events (
+                  CREATE TABLE event (
                       id INTEGER PRIMARY KEY AUTOINCREMENT,
                       ref VARCHAR(12),
                       file_id INTEGER,
@@ -221,7 +221,7 @@ class Database:
         c = self._conn.cursor()
         c.execute("""SELECT DISTINCT id from input_file""")
         d['Number of files added'] = len(c.fetchall())
-        c.execute("""SELECT 1 FROM events""")
+        c.execute("""SELECT 1 FROM event""")
         d['Number of records'] = len(c.fetchall())
         return d
 

@@ -368,7 +368,6 @@ class Database:
                         r[4],
                         r[5] * calibration[r[1]]['irradiance_factor']
                         )
-                print(subs)
                 c.execute("""
                           INSERT INTO event (
                               ref, 

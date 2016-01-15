@@ -4,6 +4,7 @@ import sqlite3
 import os
 import logging
 import glob
+from wind.inputfile import InputFile
 
 log = logging
 
@@ -17,8 +18,29 @@ class Database:
         log.debug('Constructing Database object for path: %s' % path)
         self._path = path
         self._conn = sqlite3.connect(self._path)
+        # Make it so we can do a single transaction with multiple executes...
+        self._conn.isolation_level = None
         if not self.schema_exists():
             self.create_schema()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        # Commit changes to the database
+        log.debug('Database.__exit__: committing changes to %s' % self._path)
+        self.commit()
+        log.debug('Database.__exit__: commit complete')
+
+    def commit(self, cur=None):
+        if cur is not None:
+            try:
+                cur.execute("commit")
+            except Exception as e:
+                log.debug('Database.commit(cur=%s) cur.commit() exception [ignoring]: %s' % (cur, e))
+                pass
+        try:
+            self._conn.commit()
+        except Exception as e:
+            log.debug('Database._conn.commit() exception [ignoring]: %s' % e)
+            pass
 
     def schema_exists(self):
         """
@@ -54,7 +76,8 @@ class Database:
         c.execute("""
                   CREATE TABLE field_mapping (
                       header VARCHAR(128) UNIQUE,
-                      field VARCHAR(128) NOT NULL
+                      field VARCHAR(128) NOT NULL,
+                      cast_type VARCHAR(12)
                   )
                   """)
 
@@ -130,84 +153,92 @@ class Database:
         log.debug('populating field_mapping...')
         c.execute("""
                   INSERT INTO field_mapping
-                      SELECT 'wind' AS 'header', 'wind_1' AS 'field'
-                      UNION ALL SELECT 'wind speed', 'wind_1'
-                      UNION ALL SELECT 'wind_speed', 'wind_1'
-                      UNION ALL SELECT 'windspeed', 'wind_1'
-                      UNION ALL SELECT 'wind ticks', 'wind_1'
-                      UNION ALL SELECT 'wind_ticks', 'wind_1'
-                      UNION ALL SELECT 'windticks', 'wind_1'
-                      UNION ALL SELECT 'wind pulses', 'wind_1'
-                      UNION ALL SELECT 'wind_pulses', 'wind_1'
-                      UNION ALL SELECT 'windpulses', 'wind_1'
-                      UNION ALL SELECT 'anemometer', 'wind_1'
-                      UNION ALL SELECT 'anemometer hz', 'wind_1'
-                      UNION ALL SELECT 'anemometer_hz', 'wind_1'
-                      UNION ALL SELECT 'anemometerhz', 'wind_1'
-                      UNION ALL SELECT 'ticks', 'wind_1'
-                      UNION ALL SELECT 'pulses', 'wind_1'
-                      UNION ALL SELECT 'wind 1', 'wind_1'
-                      UNION ALL SELECT 'wind_1', 'wind_1'
-                      UNION ALL SELECT 'wind1', 'wind_1'
-                      UNION ALL SELECT 'wind speed 1', 'wind_1'
-                      UNION ALL SELECT 'wind_speed_1', 'wind_1'
-                      UNION ALL SELECT 'windspeed1', 'wind_1'
-                      UNION ALL SELECT 'wind ticks 1', 'wind_1'
-                      UNION ALL SELECT 'wind_ticks_1', 'wind_1'
-                      UNION ALL SELECT 'windticks1', 'wind_1'
-                      UNION ALL SELECT 'wind pulses 1', 'wind_1'
-                      UNION ALL SELECT 'wind_pulses_1', 'wind_1'
-                      UNION ALL SELECT 'windpulses1', 'wind_1'
-                      UNION ALL SELECT 'anemometer 1', 'wind_1'
-                      UNION ALL SELECT 'anemometer_1', 'wind_1'
-                      UNION ALL SELECT 'anemometer1', 'wind_1'
-                      UNION ALL SELECT 'anemometer hz 1', 'wind_1'
-                      UNION ALL SELECT 'anemometer_hz_1', 'wind_1'
-                      UNION ALL SELECT 'anemometerhz1', 'wind_1'
-                      UNION ALL SELECT 'ticks 1', 'wind_1'
-                      UNION ALL SELECT 'ticks_1', 'wind_1'
-                      UNION ALL SELECT 'ticks1', 'wind_1'
-                      UNION ALL SELECT 'pulses 1', 'wind_1'
-                      UNION ALL SELECT 'pulses_1', 'wind_1'
-                      UNION ALL SELECT 'pulses1', 'wind_1'
-                      UNION ALL SELECT 'wind 2', 'wind_2'
-                      UNION ALL SELECT 'wind_2', 'wind_2'
-                      UNION ALL SELECT 'wind2', 'wind_2'
-                      UNION ALL SELECT 'wind speed 2', 'wind_2'
-                      UNION ALL SELECT 'wind_speed_2', 'wind_2'
-                      UNION ALL SELECT 'windspeed2', 'wind_2'
-                      UNION ALL SELECT 'wind ticks 2', 'wind_2'
-                      UNION ALL SELECT 'wind_ticks_2', 'wind_2'
-                      UNION ALL SELECT 'windticks2', 'wind_2'
-                      UNION ALL SELECT 'wind pulses 2', 'wind_2'
-                      UNION ALL SELECT 'wind_pulses_2', 'wind_2'
-                      UNION ALL SELECT 'windpulses2', 'wind_2'
-                      UNION ALL SELECT 'anemometer 2', 'wind_2'
-                      UNION ALL SELECT 'anemometer_2', 'wind_2'
-                      UNION ALL SELECT 'anemometer2', 'wind_2'
-                      UNION ALL SELECT 'anemometer hz 2', 'wind_2'
-                      UNION ALL SELECT 'anemometer_hz_2', 'wind_2'
-                      UNION ALL SELECT 'anemometerhz2', 'wind_2'
-                      UNION ALL SELECT 'irradiance', 'irradiance'
-                      UNION ALL SELECT 'irradiance v', 'irradiance'
-                      UNION ALL SELECT 'irradiance_v', 'irradiance'
-                      UNION ALL SELECT 'irr', 'irradiance'
-                      UNION ALL SELECT 'irradiance wm-2', 'irradiance'
-                      UNION ALL SELECT 'irradiance_wm-2', 'irradiance'
-                      UNION ALL SELECT 'irradiancewm-2', 'irradiance'
-                      UNION ALL SELECT 'irradiancewm2', 'irradiance'
-                      UNION ALL SELECT 'irradiance wm2', 'irradiance'
-                      UNION ALL SELECT 'irradiance_wm2', 'irradiance'
-                      UNION ALL SELECT 'batt', 'batt_v'
-                      UNION ALL SELECT 'batt_v', 'batt_v'
-                      UNION ALL SELECT 'batt v', 'batt_v'
-                      UNION ALL SELECT 'battery', 'batt_v'
-                      UNION ALL SELECT 'battery v', 'batt_v'
-                      UNION ALL SELECT 'battery_v', 'batt_v'
-                      UNION ALL SELECT 'batt_volts', 'batt_v'
-                      UNION ALL SELECT 'batt volts', 'batt_v'
-                      UNION ALL SELECT 'battery volts', 'batt_v'
-                      UNION ALL SELECT 'battery_volts', 'batt_v'
+                      SELECT 'wind' AS 'header', 'wind_1' AS 'field', 'int' as cast_type
+                      UNION ALL SELECT 'wind speed', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind_speed', 'wind_1', 'int'
+                      UNION ALL SELECT 'windspeed', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind ticks', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind_ticks', 'wind_1', 'int'
+                      UNION ALL SELECT 'windticks', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind pulses', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind_pulses', 'wind_1', 'int'
+                      UNION ALL SELECT 'windpulses', 'wind_1', 'int'
+                      UNION ALL SELECT 'anemometer', 'wind_1', 'int'
+                      UNION ALL SELECT 'anemometer hz', 'wind_1', 'int'
+                      UNION ALL SELECT 'anemometer_hz', 'wind_1', 'int'
+                      UNION ALL SELECT 'anemometerhz', 'wind_1', 'int'
+                      UNION ALL SELECT 'ticks', 'wind_1', 'int'
+                      UNION ALL SELECT 'pulses', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind 1', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind_1', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind1', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind speed 1', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind_speed_1', 'wind_1', 'int'
+                      UNION ALL SELECT 'windspeed1', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind ticks 1', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind_ticks_1', 'wind_1', 'int'
+                      UNION ALL SELECT 'windticks1', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind pulses 1', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind_pulses_1', 'wind_1', 'int'
+                      UNION ALL SELECT 'windpulses1', 'wind_1', 'int'
+                      UNION ALL SELECT 'anemometer 1', 'wind_1', 'int'
+                      UNION ALL SELECT 'anemometer_1', 'wind_1', 'int'
+                      UNION ALL SELECT 'anemometer1', 'wind_1', 'int'
+                      UNION ALL SELECT 'anemometer hz 1', 'wind_1', 'int'
+                      UNION ALL SELECT 'anemometer_hz_1', 'wind_1', 'int'
+                      UNION ALL SELECT 'anemometerhz1', 'wind_1', 'int'
+                      UNION ALL SELECT 'ticks 1', 'wind_1', 'int'
+                      UNION ALL SELECT 'ticks_1', 'wind_1', 'int'
+                      UNION ALL SELECT 'ticks1', 'wind_1', 'int'
+                      UNION ALL SELECT 'pulses 1', 'wind_1', 'int'
+                      UNION ALL SELECT 'pulses_1', 'wind_1', 'int'
+                      UNION ALL SELECT 'pulses1', 'wind_1', 'int'
+                      UNION ALL SELECT 'wind 2', 'wind_2', 'int'
+                      UNION ALL SELECT 'wind_2', 'wind_2', 'int'
+                      UNION ALL SELECT 'wind2', 'wind_2', 'int'
+                      UNION ALL SELECT 'wind speed 2', 'wind_2', 'int'
+                      UNION ALL SELECT 'wind_speed_2', 'wind_2', 'int'
+                      UNION ALL SELECT 'windspeed2', 'wind_2', 'int'
+                      UNION ALL SELECT 'wind ticks 2', 'wind_2', 'int'
+                      UNION ALL SELECT 'wind_ticks_2', 'wind_2', 'int'
+                      UNION ALL SELECT 'windticks2', 'wind_2', 'int'
+                      UNION ALL SELECT 'wind pulses 2', 'wind_2', 'int'
+                      UNION ALL SELECT 'wind_pulses_2', 'wind_2', 'int'
+                      UNION ALL SELECT 'windpulses2', 'wind_2', 'int'
+                      UNION ALL SELECT 'anemometer 2', 'wind_2', 'int'
+                      UNION ALL SELECT 'anemometer_2', 'wind_2', 'int'
+                      UNION ALL SELECT 'anemometer2', 'wind_2', 'int'
+                      UNION ALL SELECT 'anemometer hz 2', 'wind_2', 'int'
+                      UNION ALL SELECT 'anemometer_hz_2', 'wind_2', 'int'
+                      UNION ALL SELECT 'anemometerhz2', 'wind_2', 'int'
+                      UNION ALL SELECT 'irradiance', 'irradiance', 'float'
+                      UNION ALL SELECT 'irradiance v', 'irradiance', 'float'
+                      UNION ALL SELECT 'irradiance_v', 'irradiance', 'float'
+                      UNION ALL SELECT 'irr', 'irradiance', 'float'
+                      UNION ALL SELECT 'irradiance wm-2', 'irradiance', 'float'
+                      UNION ALL SELECT 'irradiance_wm-2', 'irradiance', 'float'
+                      UNION ALL SELECT 'irradiancewm-2', 'irradiance', 'float'
+                      UNION ALL SELECT 'irradiancewm2', 'irradiance', 'float'
+                      UNION ALL SELECT 'irradiance wm2', 'irradiance', 'float'
+                      UNION ALL SELECT 'irradiance_wm2', 'irradiance', 'float'
+                      UNION ALL SELECT 'batt', 'batt_v', 'float'
+                      UNION ALL SELECT 'batt_v', 'batt_v', 'float'
+                      UNION ALL SELECT 'batt v', 'batt_v', 'float'
+                      UNION ALL SELECT 'battery', 'batt_v', 'float'
+                      UNION ALL SELECT 'battery v', 'batt_v', 'float'
+                      UNION ALL SELECT 'battery_v', 'batt_v', 'float'
+                      UNION ALL SELECT 'batt_volts', 'batt_v', 'float'
+                      UNION ALL SELECT 'batt volts', 'batt_v', 'float'
+                      UNION ALL SELECT 'battery volts', 'batt_v', 'float'
+                      UNION ALL SELECT 'battery_volts', 'batt_v', 'float'
+                      UNION ALL SELECT 'ref', 'ref', NULL
+                      UNION ALL SELECT 'reference', 'ref', NULL
+                      UNION ALL SELECT 'dt', 'dt', NULL
+                      UNION ALL SELECT 'date', 'dt', NULL
+                      UNION ALL SELECT 'tm', 'tm', NULL
+                      UNION ALL SELECT 'time', 'tm', NULL
+                      UNION ALL SELECT 'direction', 'direction', NULL
+                      UNION ALL SELECT 'dir', 'direction', NULL
                   """)
         
         log.debug('creating table winda_schema_v_1_00...')
@@ -237,8 +268,53 @@ class Database:
 
     def add_file(self, path):
         """Add a single CSV file to the database."""
-        log.warning('TODO: Database.add_file(%s)' % path)
+        infile = InputFile(path, self)
         c = self._conn.cursor()
         c.execute("""INSERT INTO input_file (path, import_date, records, errors)
-                     VALUES (?, ?, ?, ?)""", (path, '20000101', 0, 0))
+                     VALUES (?, ?, NULL, NULL)""", (path, None)) # TODO: timestamp instead of None
+        try:
+            c.execute("""SELECT id FROM input_file WHERE path = ?""", (path,))
+            result = c.fetchall()
+            file_id = result[0][0]
+        except Exception as e:
+            log.error('Failed to get id for input file: %s / %s' % (type(e), e))
+            raise
+
+        c.execute('begin')
+        record_count, error_count = 0, 0
+        for record in infile:
+            record_count += 1
+            try:
+                c.execute("""
+                          INSERT OR IGNORE INTO raw_data (
+                              file_id,
+                              ref,
+                              dt,
+                              tm,
+                              wind_1,
+                              wind_2,
+                              direction,
+                              irradiance,
+                              batt_v,
+                              processed
+                          )
+                          VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, 0 )
+                          """, (
+                                file_id, 
+                                record['ref'],
+                                record['dt'],
+                                record['tm'],
+                                record['wind_1'],
+                                record['wind_2'],
+                                record['direction'],
+                                record['irradiance'],
+                                record['batt_v']
+                               ))
+            except Exception as e:
+                log.warning('Database.add_file, failed to add record: %s, exception: %s' % (record, e))
+                error_count += 1
+        # Update input_file record to reflect 
+        c.execute("""UPDATE input_file SET records = ?, errors = ? WHERE path = ?""", (record_count, error_count, path))
+        self.commit(c)
+
 

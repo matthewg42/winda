@@ -3,6 +3,8 @@
 import logging
 import os
 import sys
+import wind.database
+import wind.inputfile
 from wind.database import Database
 
 global args
@@ -22,6 +24,8 @@ def init_log():
     log = logging.getLogger('analyse_wind_data')
     log.setLevel(args.logging_level)
     log.addHandler(handler)
+    wind.database.log = log
+    wind.inputfile.log = log
 
 def database_reset(args):
     log.warning('TODO: database_reset')

@@ -256,18 +256,20 @@ class Database:
         d['Number of records'] = len(c.fetchall())
         return d
 
-    def add(self, *args):
+    def add(self, patterns):
         """Add a list of glob patterns or files to the datbase."""
-        for pattern in args:
+        for pattern in patterns:
             self.add_pattern(pattern)
         
     def add_pattern(self, pattern):
         """Add a single glob pattern of files to the datbase."""
+        log.debug('Database.add_pattern(%s)' % pattern)
         for path in glob.glob(pattern):
             self.add_file(path)
 
     def add_file(self, path):
         """Add a single CSV file to the database."""
+        log.debug('Database.add_file(%s)' % path)
         infile = InputFile(path, self)
         c = self._conn.cursor()
         c.execute("""INSERT INTO input_file (path, import_date, records, errors)

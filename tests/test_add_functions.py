@@ -22,7 +22,7 @@ BB,12-01-2016,19:34:17,1,2,SW,0.50,4.72
         os.remove(self.testfile.name)
 
     def test_add_file_single_file(self):
-        self.database.add(self.testfile.name)
+        self.database.add([self.testfile.name])
         c = self.database._conn.cursor()
         c.execute("""SELECT id, path, import_date, records, errors FROM input_file WHERE path = ?""", (self.testfile.name,))
         data = c.fetchall()

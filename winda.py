@@ -37,7 +37,8 @@ def database_info(args):
         print('%-30s%s' % (k + ':', info[k]))
     
 def add_files(args):
-    log.warning('TODO: add_files')
+    d = Database(args.database_path)
+    d.add(args.files)
 
 def list_files(args):
     log.warning('TODO: list_files')

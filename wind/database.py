@@ -4,6 +4,7 @@ import sqlite3
 import os
 import logging
 import glob
+from datetime import datetime
 from wind.inputfile import InputFile
 
 log = logging
@@ -86,7 +87,7 @@ class Database:
                   CREATE TABLE input_file (
                       id INTEGER PRIMARY KEY AUTOINCREMENT,
                       path VARCHAR(255),
-                      import_date FLOAT,
+                      import_date DATETIME,
                       records INTEGER,
                       errors INTEGER
                   )
@@ -105,9 +106,12 @@ class Database:
                       irradiance FLOAT,
                       batt_v FLOAT,
                       processed BOOLEAN,
+                      ts DATETIME,
                       FOREIGN KEY(file_id) REFERENCES input_file(id)
                   )
                   """)
+        log.debug('creating index on raw_data.ts...')
+        c.execute("""CREATE INDEX raw_data__ts ON raw_data(ts)""")
 
         log.debug('creating table event...')
         c.execute("""
@@ -115,11 +119,11 @@ class Database:
                       id INTEGER PRIMARY KEY AUTOINCREMENT,
                       ref VARCHAR(12),
                       file_id INTEGER,
-                      event_start FLOAT,
-                      event_end FLOAT,
+                      event_start DATETIME,
+                      event_end DATETIME,
                       event_duration FLOAT,
-                      anemometer_hz_1 INTEGER,
-                      anemometer_hz_2 INTEGER,
+                      anemometer_hz_1 FLOAT,
+                      anemometer_hz_2 FLOAT,
                       irradiance_v FLOAT,
                       windspeed_ms_1 FLOAT,
                       windspeed_ms_2 FLOAT,
@@ -268,12 +272,12 @@ class Database:
             self.add_file(path)
 
     def add_file(self, path):
-        """Add a single CSV file to the database."""
+        """Add a single CSV file to the raw_data table."""
         log.debug('Database.add_file(%s)' % path)
         infile = InputFile(path, self)
         c = self._conn.cursor()
         c.execute("""INSERT INTO input_file (path, import_date, records, errors)
-                     VALUES (?, ?, NULL, NULL)""", (path, None)) # TODO: timestamp instead of None
+                     VALUES (?, ?, NULL, NULL)""", (path, datetime.now()))
         try:
             c.execute("""SELECT id FROM input_file WHERE path = ?""", (path,))
             result = c.fetchall()
@@ -298,9 +302,10 @@ class Database:
                               direction,
                               irradiance,
                               batt_v,
-                              processed
+                              processed,
+                              ts
                           )
-                          VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, 0 )
+                          VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ? )
                           """, (
                                 file_id, 
                                 record['ref'],
@@ -310,7 +315,8 @@ class Database:
                                 record['wind_2'],
                                 record['direction'],
                                 record['irradiance'],
-                                record['batt_v']
+                                record['batt_v'],
+                                datetime.strptime("%sT%s" % (record['dt'], record['tm']), "%d-%m-%YT%H:%M:%S")
                                ))
             except Exception as e:
                 log.warning('Database.add_file, failed to add record: %s, exception: %s' % (record, e))
@@ -318,5 +324,99 @@ class Database:
         # Update input_file record to reflect 
         c.execute("""UPDATE input_file SET records = ?, errors = ? WHERE path = ?""", (record_count, error_count, path))
         self.commit(c)
+        self.process_file(file_id)
 
+    def process_file(self, file_id):
+        q = self._conn.cursor()
+        calibration = self.get_calibration()
+        q.execute("""
+                  SELECT     ts, ref, wind_1, wind_2, 
+                             direction, irradiance, batt_v, rowid
+                  FROM       raw_data 
+                  WHERE      file_id = ?
+                  AND        processed = 0
+                  ORDER BY ts ASC
+                  """, (file_id,))
+        prev_ts = None
+        c = self._conn.cursor()
+        c.execute('begin')
+        for r in q.fetchall():
+            try:
+                if prev_ts is None:
+                    prev_ts = datetime.strptime(r[0], "%Y-%m-%d %H:%M:%S")
+                    continue
+                ts = datetime.strptime(r[0], "%Y-%m-%d %H:%M:%S")
+                delta_t = ts - prev_ts
+                if delta_t.seconds == 0:
+                    # no time since previous record - SKIP
+                    log.warning('Database.process_file(%s) multiple records for time: %s, SKIPPING after first' % (
+                                    file_id, ts))
+                    continue
+                elapsed = float(delta_t.seconds)
+                wind_1_hz = r[2] / elapsed
+                wind_2_hz = r[3] / elapsed
+                subs = (r[1], 
+                        file_id, 
+                        prev_ts, 
+                        ts, 
+                        elapsed, 
+                        wind_1_hz,
+                        wind_2_hz,
+                        r[5],
+                        wind_1_hz * calibration[r[1]]['anemometer_1_factor'],
+                        wind_2_hz * calibration[r[1]]['anemometer_2_factor'],
+                        r[4],
+                        r[5] * calibration[r[1]]['irradiance_factor']
+                        )
+                print(subs)
+                c.execute("""
+                          INSERT INTO event (
+                              ref, 
+                              file_id, 
+                              event_start, 
+                              event_end, 
+                              event_duration, 
+                              anemometer_hz_1, 
+                              anemometer_hz_2, 
+                              irradiance_v,
+                              windspeed_ms_1, 
+                              windspeed_ms_2, 
+                              wind_direction,
+                              irradiance_wm2
+                          )
+                          VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )
+                          """, subs)
+                        
+                prev_ts = ts
+            except Exception as e:
+                log.warning('Failed to add event: %s / %s' % (type(e), e))
+            c.execute("""UPDATE raw_data SET processed = 1 WHERE rowid = ?""", (r[7],))
+        c.execute('commit')
+
+    def get_calibration(self):
+        """
+        Return a dict of dicts containing the calibration data for all sensors.
+
+        Structure: { 'REF1': { CALIB },
+                     'REF2': { CALIB },
+                     .... }
+        Where: CALIB is a dict with the following keys:
+              ref
+              anemometer_1_factor
+              anemometer_2_factor
+              max_windspeed_ms
+              irradiance_factor
+              max_irradiance
+        """
+        c = self._conn.cursor()
+        c.execute("""SELECT * FROM calibration""")
+        ret = dict()
+        for r in c.fetchall():
+            ret[r[0]] = {'ref': r[0],
+                         'anemometer_1_factor': r[1],
+                         'anemometer_2_factor': r[2],
+                         'max_windspeed_ms': r[3],
+                         'irradiance_factor': r[4],
+                         'max_irradiance': r[5]}
+        return ret
 

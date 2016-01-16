@@ -355,6 +355,15 @@ class Database:
                 elapsed = float(delta_t.seconds)
                 wind_1_hz = r[2] / elapsed
                 wind_2_hz = r[3] / elapsed
+                windspeed_ms_1 = wind_1_hz * calibration[r[1]]['anemometer_1_factor']
+                windspeed_ms_2 = wind_2_hz * calibration[r[1]]['anemometer_2_factor']
+                irradiance_wm2 = r[5] * calibration[r[1]]['irradiance_factor']
+                if windspeed_ms_1 > calibration[r[1]]['max_windspeed_ms']:
+                    raise Exception('Spurious windspeed 1 (%.3f > %.3f)' % (windspeed_ms_1, calibration[r[1]]['max_windspeed_ms']))
+                if windspeed_ms_2 > calibration[r[1]]['max_windspeed_ms']:
+                    raise Exception('Spurious windspeed 2 (%.3f > %.3f)' % (windspeed_ms_2, calibration[r[1]]['max_windspeed_ms']))
+                if irradiance_wm2 > calibration[r[1]]['max_irradiance']:
+                    raise Exception('Spurious irradiance_wm2 (%.3f > %.3f)' % (irradiance_wm2, calibration[r[1]]['max_irradiance']))
                 subs = (r[1], 
                         file_id, 
                         prev_ts, 
@@ -363,10 +372,10 @@ class Database:
                         wind_1_hz,
                         wind_2_hz,
                         r[5],
-                        wind_1_hz * calibration[r[1]]['anemometer_1_factor'],
-                        wind_2_hz * calibration[r[1]]['anemometer_2_factor'],
+                        windspeed_ms_1,
+                        windspeed_ms_2,
                         r[4],
-                        r[5] * calibration[r[1]]['irradiance_factor']
+                        irradiance_wm2
                         )
                 c.execute("""
                           INSERT INTO event (
@@ -418,4 +427,10 @@ class Database:
                          'irradiance_factor': r[4],
                          'max_irradiance': r[5]}
         return ret
+
+    def reset(self):
+        """Reset the database to a clean state"""
+        for table in ['event', 'raw_data', 'input_file', 'field_mapping', 'calibration', 'winda_schema_v_1_00']:
+            self._conn.execute("""DROP TABLE %s""" % table)
+        self.create_schema()
 

@@ -86,7 +86,7 @@ class Database:
         c.execute("""
                   CREATE TABLE input_file (
                       id INTEGER PRIMARY KEY AUTOINCREMENT,
-                      path VARCHAR(255),
+                      path VARCHAR(255) UNIQUE,
                       import_date DATETIME,
                       records INTEGER,
                       errors INTEGER
@@ -276,8 +276,15 @@ class Database:
         log.debug('Database.add_file(%s)' % path)
         infile = InputFile(path, self)
         c = self._conn.cursor()
-        c.execute("""INSERT INTO input_file (path, import_date, records, errors)
-                     VALUES (?, ?, NULL, NULL)""", (path, datetime.now()))
+        try:
+            c.execute("""INSERT INTO input_file (path, import_date, records, errors)
+                         VALUES (?, ?, NULL, NULL)""", (path, datetime.now()))
+        except sqlite3.IntegrityError as e:
+            log.error('%s : perhaps this file has already been added to the database?' % e)
+            return False
+        except Exception as e:
+            log.error('Unexpected exception: %s / %s' % (type(e), e))
+            return False
         try:
             c.execute("""SELECT id FROM input_file WHERE path = ?""", (path,))
             result = c.fetchall()

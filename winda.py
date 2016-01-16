@@ -3,6 +3,9 @@
 import logging
 import os
 import sys
+import wind.database
+import wind.inputfile
+import fileinput
 from wind.database import Database
 
 global args
@@ -22,9 +25,15 @@ def init_log():
     log = logging.getLogger('analyse_wind_data')
     log.setLevel(args.logging_level)
     log.addHandler(handler)
+    wind.database.log = log
+    wind.inputfile.log = log
 
 def database_reset(args):
-    log.warning('TODO: database_reset')
+    d = Database(args.database_path)
+    if confirmation():
+        d.reset()
+    else:
+        log.warning("Database reset ABORTED because confirmation not given")
 
 def database_info(args):
     d = Database(args.database_path)
@@ -33,7 +42,8 @@ def database_info(args):
         print('%-30s%s' % (k + ':', info[k]))
     
 def add_files(args):
-    log.warning('TODO: add_files')
+    d = Database(args.database_path)
+    d.add(args.files)
 
 def list_files(args):
     log.warning('TODO: list_files')
@@ -62,6 +72,20 @@ def add_data_filters(parser):
 def add_files_option(parser):
     parser.add_argument('files', metavar='filename', type=str, nargs='+',
                    help='file names or glob pattern')
+
+def confirmation(msg='Are you sure (y/N)? '):
+    """Prompt the user for confirmation of some operation, return True if OK to proceed."""
+    if args.assume_yes:
+        return True
+    while True:
+        sys.stdout.write(msg)
+        response = raw_input()
+        if response.lower() in ['y', 'yes']:
+            return True
+        elif response.lower() in ['n', 'no', '']:
+            return False
+        else:
+            print("Please choose y or n")
 
 if __name__ == '__main__':
     import argparse

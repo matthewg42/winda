@@ -6,6 +6,7 @@ import sys
 import wind.database
 import wind.inputfile
 import fileinput
+import fnmatch
 from wind.database import Database
 
 global args
@@ -46,8 +47,26 @@ def add_files(args):
     d.add(args.files)
 
 def list_files(args):
-    log.warning('TODO: list_files')
+    d = Database(args.database_path)
 
+    def want(path, patterns):
+        if len(patterns) == 0:
+            return True
+        dirname, basename = os.path.split(path)
+        for pat in patterns:
+            if fnmatch.fnmatch(basename, pat):
+                return True
+        return False
+
+    print(args.files)
+    print('%3s %-50s %19s %9s %9s' % (
+            'ID', 'PATH', 'IMPORTED', 'RECORDS', 'ERRORS'))
+    print(' '.join(['-' * l for l in [3, 50, 19, 9, 9]]))
+    for r in d.list_input_files():
+        if want(r['path'], args.files):
+            print('%3d %-50s %19s %9d %9d' % (
+                    r['id'], r['path'], r['import_date'][:19], r['records'], r['errors']))
+    
 def remove_data(args):
     log.warning('TODO: remove_data')
 
@@ -70,7 +89,7 @@ def add_data_filters(parser):
                         help='Select data only up to a specific date/time in YYMMDD[HHMMSS] format')
 
 def add_files_option(parser):
-    parser.add_argument('files', metavar='filename', type=str, nargs='+',
+    parser.add_argument('files', metavar='filename', type=str, nargs='*',
                    help='file names or glob pattern')
 
 def confirmation(msg='Are you sure (y/N)? '):

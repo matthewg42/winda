@@ -9,6 +9,15 @@ from wind.inputfile import InputFile
 
 log = logging
 
+def result_as_dict_array(cursor):
+    result = []
+    for row in cursor.fetchall():
+        d = {}
+        for idx, col in enumerate(cursor.description):
+            d[col[0]] = row[idx]
+        result.append(d)
+    return result
+    
 class Database:
     def __init__(self, path):
         """ 
@@ -440,4 +449,9 @@ class Database:
         for table in ['event', 'raw_data', 'input_file', 'field_mapping', 'calibration', 'winda_schema_v_1_00']:
             self._conn.execute("""DROP TABLE %s""" % table)
         self.create_schema()
+
+    def list_input_files(self):
+        c = self._conn.cursor()
+        c.execute("""SELECT * FROM input_file""")
+        return result_as_dict_array(c)
 

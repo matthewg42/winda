@@ -100,6 +100,33 @@ BB,12-01-2016,19:34:17,1,2,SW,0.50,4.72
         self.assertEqual(events[3][10], 'SW')  # irradiance_wm2
         self.assertEqual(events[3][11], 0.5)  # irradiance_wm2
 
+    def test_reject_suprious_values(self):
+        # Create an empty database
+        tmpfile = tempfile.NamedTemporaryFile(suffix='.sqlite3')
+        dbpath = tmpfile.name
+        del(tmpfile)
+        db = Database(dbpath)
+        # Create a file with test data in it
+        testfile = tempfile.NamedTemporaryFile(suffix='.csv', delete=False)
+        testfile.write("""Ref, Date, Time, Wind 1, Wind 2, Direction, Irradiance Wm-2, Batt V
+BB,12-01-2016,10:00:00,1,2,W,0.10,4.72
+BB,12-01-2016,10:01:00,1000000,2,N,0.20,4.72
+BB,12-01-2016,10:02:00,1,1000000,E,0.30,4.70
+BB,12-01-2016,10:03:00,1,2,E,1000000,4.80
+BB,12-01-2016,10:04:00,1,2,E,0.30,4.90
+""")
+        testfile.close()
+        # Add the test data to the test database
+        db.add([testfile.name])
+        c = db._conn.cursor()
+        c.execute("""SELECT * FROM event""")
+        events = c.fetchall()
+        print('EVENTS:', events)
+        self.assertEqual(len(events), 1)
+        del(db)
+        os.remove(dbpath)
+        os.remove(testfile.name)
+
     def get_input_file_id(self):
         c = self._db._conn.cursor()
         c.execute("""SELECT id FROM input_file WHERE path = ?""", (self._testfile.name,))

@@ -50,7 +50,7 @@ def add_files(args):
     d = Database(args.database_path)
     d.add(args.files)
 
-def list_files(args):
+def show_files(args):
     d = Database(args.database_path)
 
     def want(path, patterns):
@@ -293,11 +293,6 @@ if __name__ == '__main__':
                    help='file name or glob pattern to add to database')
     parser_add.set_defaults(func=add_files)
 
-    # Files command
-    parser_files = subparsers.add_parser('files', help='List files which have been added to the database')
-    add_files_option(parser_files)
-    parser_files.set_defaults(func=list_files)
-
     # Remove command
     parser_remove = subparsers.add_parser('remove', help='Remove data from the database')
     add_data_filters(parser_remove)
@@ -337,6 +332,11 @@ if __name__ == '__main__':
     parser_show_calibration = show_subparsers.add_parser('calibration', help='Show current calibration(s)')
     parser_show_calibration.add_argument('ref', type=str, nargs='?', default='%', help='Filter by this ref')
     parser_show_calibration.set_defaults(func=show_calibration)
+
+    # show files command
+    parser_show_files = show_subparsers.add_parser('files', help='Show files in the database') 
+    add_files_option(parser_show_files)
+    parser_show_files.set_defaults(func=show_files)
 
     # Do it!
     args = parser.parse_args()

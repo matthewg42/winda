@@ -121,8 +121,98 @@ class Filter:
     def select_raw_data(self, cursor):
         if self.get_all():
             cursor.execute("""SELECT * FROM raw_data""")
-            return cursor.fetchall()
-        return []
+            return result_as_dict_array(cursor)
+        cursor.execute("""DROP TABLE IF EXISTS tmp_raw_data_rids""")
+        cursor.execute("""CREATE TEMP TABLE tmp_raw_data_rids (rid INT)""")
+        cursor.execute("""INSERT INTO tmp_raw_data_rids SELECT rowid FROM raw_data""")
+        log.debug('Raw Data selected before filtering: %d' % self.count_selected_raw_data(cursor))
+        # For each filter which is defined remove the set of records not matching the filter
+        if self.file_filter is not None:
+            cursor.execute("""
+                           DELETE FROM tmp_raw_data_rids
+                           WHERE NOT EXISTS (
+                               SELECT        1
+                               FROM          raw_data r,
+                                             input_file i
+                               WHERE         rid = r.rowid
+                               AND           i.id = r.file_id
+                               AND           i.path = ?
+                           )
+                           """, (self.file_filter,))
+        log.debug('Raw Data selected after file_filter(%s): %d' % (
+            self.file_filter, self.count_selected_raw_data(cursor)))
+
+        if self.date_filter is not None:
+            cursor.execute("""
+                           DELETE FROM tmp_raw_data_rids
+                           WHERE NOT EXISTS (
+                               SELECT        1
+                               FROM          raw_data r
+                               WHERE         rid = r.rowid
+                               AND           dt = ?
+                           )
+                           """, (self.date_filter.strftime('%d-%m-%Y'),))
+        log.debug('Raw Data selected after date_filter(%s): %d' % (
+                    str(self.date_filter), self.count_selected_raw_data(cursor)))
+
+        if self.from_filter is not None and self.to_filter is not None:
+            cursor.execute("""
+                           DELETE FROM tmp_raw_data_rids
+                           WHERE NOT EXISTS (
+                               SELECT        1
+                               FROM          raw_data r
+                               WHERE         rid = r.rowid
+                               AND           ts >= ?
+                               AND           ts <= ?
+                           )
+                           """, (self.from_filter.strftime('%Y-%m-%d %T'),
+                                 self.to_filter.strftime('%Y-%m-%d %T')))
+        elif self.from_filter is not None and self.to_filter is None:
+            cursor.execute("""
+                           DELETE FROM tmp_raw_data_rids
+                           WHERE NOT EXISTS (
+                               SELECT        1
+                               FROM          raw_data r
+                               WHERE         rid = r.rowid
+                               AND           ts >= ?
+                           )
+                           """, (self.from_filter.strftime('%Y-%m-%d %T'),))
+        elif self.from_filter is None and self.to_filter is not None:
+            cursor.execute("""
+                           DELETE FROM tmp_raw_data_rids
+                           WHERE NOT EXISTS (
+                               SELECT        1
+                               FROM          raw_data r
+                               WHERE         rid = r.rowid
+                               AND           ts <= ?
+                           )
+                           """, (self.to_filter.strftime('%Y-%m-%d %T'),))
+        log.debug('Raw Data selected after from_filter(%s) to_filter(%s): %d' % (
+                    str(self.from_filter), str(self.to_filter), self.count_selected_raw_data(cursor)))
+
+        cursor.execute("""
+                       SELECT        *
+                       FROM          raw_data r
+                       WHERE         EXISTS (
+                           SELECT       1
+                           FROM         tmp_raw_data_rids t
+                           WHERE        r.rowid = t.rid
+                       )
+                       """)
+        return result_as_dict_array(cursor)
+
+    def count_selected_raw_data(self, cursor):
+        try:
+            cursor.execute("""
+                           SELECT       1
+                           FROM         raw_data r,
+                                        tmp_raw_data_rids t
+                           WHERE        r.rowid = t.rid
+                           """)
+            return len(cursor.fetchall())
+        except Exception as e:
+            log.warning('Filter.count_selected_raw_data() exception: %s / %s' % (type(e), e))
+            return 0
 
 
 

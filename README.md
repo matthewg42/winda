@@ -70,13 +70,10 @@ Some example commands to give a quick overview of usage:
     winda speeds --range 20-40 --increment 0.25 --from 150601 --to 150630 > out.csv
     winda export > all_data.csv
     winda export --date 150601 > some_data.csv
-    winda info
-    winda reset
-
-Still to implement: 
-
     winda remove --file P1506*.CSV
     winda remove --date 150601
+    winda info
+    winda reset
 
 Really useful:
 
@@ -86,6 +83,7 @@ Really useful:
     winda calibrate --help
     winda speeds --help
     winda export --help
+    winda remove --help
     winda info --help
     winda reset --help
 
@@ -148,8 +146,6 @@ If ref is specified, only that sensor is listed in the output.
     winda show calibration BB
 
 ### Command: remove
-
-NOTE: not implemented yet
 
 #### Syntax
 

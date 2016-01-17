@@ -9,7 +9,7 @@ import wind.filter
 import fileinput
 import fnmatch
 import dateutil.parser
-from wind.database import Database, result_as_dict_array
+from wind.database import Database, result_as_dict_array, result_headers
 from wind.filter import Filter
 
 global args
@@ -99,10 +99,10 @@ def export_speeds(args):
     result_csv = []
     if args.split:
         groups = 'e.wind_direction, r.a, r.b'
-        result_csv.append('Direction,Windspeed Range Begin,Windspeed Range End,Probability')
+        result_csv.append('direction,windspeed_range_begin,windspeed_range_end,probability')
     else:
         groups = 'r.a, r.b'
-        result_csv.append('Windspeed Range Begin,Windspeed Range End,Probability')
+        result_csv.append('windspeed_range_begin,windspeed_range_end,probability')
 
     total = filt.count_selected_events()
     c.execute("""
@@ -122,13 +122,29 @@ def export_speeds(args):
     log.debug('total selected events: %d' % total)
     for r in c.fetchall():
         if args.split:
-            result_csv.append('%s,%.2f,%.2f,%.2f' % (r[0], r[1], r[2], float(r[3]*100)/float(total)))
+            result_csv.append('%s,%.2f,%.2f,%.4f' % (r[0], r[1], r[2], float(r[3])/float(total)))
         else:
-            result_csv.append('%.2f,%.2f,%.2f' % (r[0], r[1], float(r[2]*100)/float(total)))
+            result_csv.append('%.2f,%.2f,%.4f' % (r[0], r[1], float(r[2])/float(total)))
     print('\n'.join(result_csv))
 
 def export_data(args):
-    log.warning('TODO: export_data')
+    d = Database(args.database_path)
+    c = d._conn.cursor()
+    filt = generate_filter(args, c)
+    filt.select_events()
+    result_csv = []
+    c.execute("""
+              SELECT          ref, event_start, event_end, windspeed_ms_1, windspeed_ms_2, wind_direction, irradiance_wm2
+              FROM            event e
+              WHERE           EXISTS (
+                  SELECT        1
+                  FROM          tmp_event_rids t
+                  WHERE         t.rid = e.rowid
+              )
+              """)
+    print(','.join(result_headers(c)))
+    for r in c.fetchall():
+        print(','.join([str(i) for i in list(r)]))
 
 
 #############
@@ -243,7 +259,6 @@ if __name__ == '__main__':
     # Export command
     parser_export = subparsers.add_parser('export', help='Remove data from the database')
     add_data_filters(parser_export)
-    parser_export.add_argument('file', help='Specify the export file path')
     parser_export.set_defaults(func=export_data)
 
     # create the parser for the "b" command

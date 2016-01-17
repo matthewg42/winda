@@ -17,6 +17,12 @@ def result_as_dict_array(cursor):
             d[col[0]] = row[idx]
         result.append(d)
     return result
+
+def result_headers(cursor):
+    result = []
+    for idx, col in enumerate(cursor.description):
+        result.append(col[0])
+    return result
     
 class Database:
     def __init__(self, path):

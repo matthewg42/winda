@@ -72,7 +72,65 @@ def show_files(args):
                     r['id'], r['path'], r['import_date'][:19], r['records'], r['errors']))
     
 def remove_data(args):
-    log.warning('TODO: remove_data')
+    d = Database(args.database_path)
+    c = d._conn.cursor()
+    filt = generate_filter(args, c)
+
+    # populate the temp tables tmp_event_rids, tmp_raw_data_rids
+    filt.select_events()
+    filt.select_raw_data()
+
+    c.execute("""SELECT rid FROM tmp_event_rids""")
+    event_rowids = c.fetchall()
+    c.execute("""SELECT rid FROM tmp_raw_data_rids""")
+    raw_data_rowids = c.fetchall()
+    if confirmation('Remove %d events and %d raw_date records (y/N)? ' % (
+                    len(event_rowids),
+                    len(raw_data_rowids))):
+        c.execute("""
+                  DELETE FROM       event
+                  WHERE             EXISTS (
+                      SELECT            1
+                      FROM              tmp_event_rids t
+                      WHERE             t.rid = event.rowid
+                  )
+                  """)
+        c.execute("""
+                  DELETE FROM       raw_data
+                  WHERE             EXISTS (
+                      SELECT            1
+                      FROM              tmp_raw_data_rids t
+                      WHERE             t.rid = raw_data.rowid
+                  )
+                  """)
+        c.execute("""
+                  SELECT       id, path
+                  FROM         input_file
+                  WHERE        NOT EXISTS (
+                      SELECT       1
+                      FROM         event e
+                      WHERE        e.file_id = input_file.id
+                  )
+                  AND          NOT EXISTS (
+                      SELECT       1
+                      FROM         raw_data r
+                      WHERE        r.file_id = input_file.id
+                  )""")
+        for r in c.fetchall():
+            print('Removing input file %s as it no longer has events / raw_data' % r[1])
+        c.execute("""
+                  DELETE FROM  input_file
+                  WHERE        NOT EXISTS (
+                      SELECT       1
+                      FROM         event e
+                      WHERE        e.file_id = input_file.id
+                  )
+                  AND          NOT EXISTS (
+                      SELECT       1
+                      FROM         raw_data r
+                      WHERE        r.file_id = input_file.id
+                  )""")
+        d.commit()
 
 def export_speeds(args):
     if args.increment <= 0.0:

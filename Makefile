@@ -1,5 +1,5 @@
 test:
-	./winda.py --debug add ../data/D160113.CSV
+	./winda.py --debug add ../data/D160117.CSV
 
 ed:
 	sqlite3 -column -header winda.db

@@ -8,7 +8,9 @@ import wind.inputfile
 import wind.filter
 import fileinput
 import fnmatch
-from wind.database import Database
+import dateutil.parser
+from wind.database import Database, result_as_dict_array
+from wind.filter import Filter
 
 global args
 global log
@@ -73,7 +75,57 @@ def remove_data(args):
     log.warning('TODO: remove_data')
 
 def export_speeds(args):
-    log.warning('TODO: export_speeds')
+    if args.increment <= 0.0:
+        raise Exception('--increment must be greater than 0.0')
+    d = Database(args.database_path)
+    c = d._conn.cursor()
+    # Create a temp table with the windspeed ranges to analyse
+    c.execute("""DROP TABLE IF EXISTS windspeed_range""")
+    c.execute("""CREATE TEMP TABLE windspeed_range (a FLOAT UNIQUE, b FLOAT UNIQUE)""")
+    rng = [float(i) for i in args.range.split('-')]
+    a = rng[0] 
+    while a < rng[1]:
+        b = a+args.increment
+        c.execute("""
+                  INSERT OR IGNORE INTO windspeed_range 
+                  VALUES (?, ?)
+                  """, (a, b))
+        # log.debug('adding range: %f to %f' % (a, b))
+        a = b
+    
+    filt = generate_filter(args, c)
+    filt.select_events()
+
+    result_csv = []
+    if args.split:
+        groups = 'e.wind_direction, r.a, r.b'
+        result_csv.append('Direction,Windspeed Range Begin,Windspeed Range End,Probability')
+    else:
+        groups = 'r.a, r.b'
+        result_csv.append('Windspeed Range Begin,Windspeed Range End,Probability')
+
+    total = filt.count_selected_events()
+    c.execute("""
+              SELECT          %s, COUNT(1)
+              FROM            event e,
+                              windspeed_range r
+              WHERE           file_id = 1
+              AND                     windspeed_ms_1 >= r.a
+              AND                     windspeed_ms_1 < r.b
+              AND EXISTS (
+                  SELECT        1
+                  FROM          tmp_event_rids t
+                  WHERE         t.rid = e.rowid
+              )
+              GROUP BY        %s
+              """ % (groups, groups))
+    log.debug('total selected events: %d' % total)
+    for r in c.fetchall():
+        if args.split:
+            result_csv.append('%s,%.2f,%.2f,%.2f' % (r[0], r[1], r[2], float(r[3]*100)/float(total)))
+        else:
+            result_csv.append('%.2f,%.2f,%.2f' % (r[0], r[1], float(r[2]*100)/float(total)))
+    print('\n'.join(result_csv))
 
 def export_data(args):
     log.warning('TODO: export_data')
@@ -85,10 +137,36 @@ def add_data_filters(parser):
                         help='Select data that came from a specific file, or a file matching this glob pattern')
     parser.add_argument('--date', dest='date_filter', type=str, default=None,
                         help='Select data only from a specific date in YYMMDD format')
-    parser.add_argument('--from', dest='from', type=str, default=None,
+    parser.add_argument('--from', dest='from_filter', type=str, default=None,
                         help='Select data only after a specific date/time in YYMMDD[HHMMSS] format')
-    parser.add_argument('--to', dest='to', type=str, default=None,
+    parser.add_argument('--to', dest='to_filter', type=str, default=None,
                         help='Select data only up to a specific date/time in YYMMDD[HHMMSS] format')
+
+def generate_filter(args, cursor):
+    file_filter = args.file_filter
+
+    date_filter = None
+    # date_filter should be a datetime.date() object
+    if args.date_filter is not None:
+        date_filter = dateutil.parser.parse(args.date_filter).date()
+
+    # from_filter and to_filter should be datetime.datetime() objects
+    from_filter = None
+    to_filter = None
+    if args.from_filter is not None:
+        from_filter = dateutil.parser.parse(args.from_filter)
+    if args.to_filter is not None:
+        to_filter = dateutil.parser.parse(args.to_filter)
+
+    log.debug('file_filter = %s : %s' % (type(file_filter), file_filter))
+    log.debug('date_filter = %s : %s' % (type(date_filter), date_filter))
+    log.debug('from_filter = %s : %s' % (type(from_filter), from_filter))
+    log.debug('to_filter = %s : %s' % (type(to_filter), to_filter))
+    return Filter(cursor,
+                  file_filter=file_filter, 
+                  date_filter=date_filter,
+                  from_filter=from_filter, 
+                  to_filter=to_filter)
 
 def add_files_option(parser):
     parser.add_argument('files', metavar='filename', type=str, nargs='*',
@@ -155,6 +233,10 @@ if __name__ == '__main__':
     parser_speeds = subparsers.add_parser('speeds', help='Remove data from the database')
     parser_speeds.add_argument('--direction-split', dest='split', action='store_const', const=True, 
         default=False, help='Add a wind direction column to the output and perform the analysis for each wind direction found in the selected data')
+    parser_speeds.add_argument('--range', dest='range', type=str, default='0-40', 
+        help='Specify the range of windspeeds to analyse, e.g. 0-20.5')
+    parser_speeds.add_argument('--increment', dest='increment', type=float, default=0.5, 
+        help='Specify the incremement of windspeeds to analyse, e.g. 0.5')
     add_data_filters(parser_speeds)
     parser_speeds.set_defaults(func=export_speeds)
 

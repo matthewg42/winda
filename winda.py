@@ -5,6 +5,7 @@ import os
 import sys
 import wind.database
 import wind.inputfile
+import wind.filter
 import fileinput
 import fnmatch
 from wind.database import Database
@@ -28,6 +29,7 @@ def init_log():
     log.addHandler(handler)
     wind.database.log = log
     wind.inputfile.log = log
+    wind.filter.log = log
 
 def database_reset(args):
     d = Database(args.database_path)

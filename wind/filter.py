@@ -1,4 +1,7 @@
+import logging
 from wind.database import result_as_dict_array
+
+log = logging
 
 """ Class which describes data filters """
 class Filter:
@@ -23,6 +26,7 @@ class Filter:
         if self.get_all():
             cursor.execute("""SELECT * FROM event""")
             return result_as_dict_array(cursor)
+        cursor.execute("""DROP TABLE IF EXISTS tmp_event_rids""")
         cursor.execute("""CREATE TEMP TABLE tmp_event_rids (rid INT)""")
         cursor.execute("""INSERT INTO tmp_event_rids SELECT rowid FROM event""")
         log.debug('Events selected before filtering: %d' % self.count_selected_events(cursor))
@@ -39,8 +43,8 @@ class Filter:
                                AND           i.path = ?
                            )
                            """, (self.file_filter,))
-        log.debug('Events selected after file_filter(s): %d' % (
-            file_filter, self.count_selected_events(cursor)))
+        log.debug('Events selected after file_filter(%s): %d' % (
+            self.file_filter, self.count_selected_events(cursor)))
 
         if self.date_filter is not None:
             cursor.execute("""
@@ -53,7 +57,7 @@ class Filter:
                            )
                            """, (self.date_filter.strftime('%Y-%m-%d%%'),))
         log.debug('Events selected after date_filter(%s): %d' % (
-                    str(date_filter), self.count_selected_events(cursor)))
+                    str(self.date_filter), self.count_selected_events(cursor)))
 
         if self.from_filter is not None and self.to_filter is not None:
             cursor.execute("""
@@ -88,7 +92,7 @@ class Filter:
                            )
                            """, (self.from_filter.strftime('%Y-%m-%d %T'),))
         log.debug('Events selected after from_filter(%s) to_filter(%s): %d' % (
-                    str(from_filter), str(to_filter), self.count_selected_events(cursor)))
+                    str(self.from_filter), str(self.to_filter), self.count_selected_events(cursor)))
 
         cursor.execute("""
                        SELECT        *

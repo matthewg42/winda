@@ -148,7 +148,7 @@ def export_speeds(args):
                   INSERT OR IGNORE INTO windspeed_range 
                   VALUES (?, ?)
                   """, (a, b))
-        # log.debug('adding range: %f to %f' % (a, b))
+        log.debug('adding range: %f to %f' % (a, b))
         a = b
     
     filt = generate_filter(args, c)
@@ -163,20 +163,20 @@ def export_speeds(args):
         result_csv.append('windspeed_range_begin,windspeed_range_end,probability')
 
     total = filt.count_selected_events()
+    wind_field = 'windspeed_ms_%d' % args.anemometer_no
     c.execute("""
               SELECT          %s, COUNT(1)
               FROM            event e,
                               windspeed_range r
-              WHERE           file_id = 1
-              AND                     windspeed_ms_1 >= r.a
-              AND                     windspeed_ms_1 < r.b
+              WHERE           %s >= r.a
+              AND             %s < r.b
               AND EXISTS (
                   SELECT        1
                   FROM          tmp_event_rids t
                   WHERE         t.rid = e.rowid
               )
               GROUP BY        %s
-              """ % (groups, groups))
+              """ % (groups, wind_field, wind_field, groups))
     log.debug('total selected events: %d' % total)
     for r in c.fetchall():
         if args.split:
@@ -364,6 +364,8 @@ if __name__ == '__main__':
         help='Specify the range of windspeeds to analyse, e.g. 0-20.5')
     parser_speeds.add_argument('--increment', dest='increment', type=float, default=0.5, 
         help='Specify the incremement of windspeeds to analyse, e.g. 0.5')
+    parser_speeds.add_argument('--2', dest='anemometer_no', action='store_const', const=2, default=1, 
+        help='Use data from the second anemometer (the first is the default)')
     add_data_filters(parser_speeds)
     parser_speeds.set_defaults(func=export_speeds)
 

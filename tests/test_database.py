@@ -1,7 +1,8 @@
 import unittest
 import os
 import tempfile
-from wind.database import Database
+import datetime
+from wind.database import Database, str2datetime, str2isodatestr
 
 class TestDatabase(unittest.TestCase):
     def setUp(self):
@@ -10,6 +11,29 @@ class TestDatabase(unittest.TestCase):
     def tearDown(self):
         del(self.database)
         os.remove(self.path)
+
+    def test_date_string_interpretation(self):
+        self.assertEqual(str2datetime('01/02/2003T12:13:14'),
+                         datetime.datetime(2003, 2, 1, 12, 13, 14))
+        self.assertEqual(str2datetime('01-02-2003T12:13:14'),
+                         datetime.datetime(2003, 2, 1, 12, 13, 14))
+        self.assertEqual(str2datetime('01-02-03T12:13:14'),
+                         datetime.datetime(2003, 2, 1, 12, 13, 14))
+        self.assertEqual(str2datetime('2003-02-01T12:13:14'),
+                         datetime.datetime(2003, 2, 1, 12, 13, 14))
+        self.assertEqual(str2datetime('20030201T12:13:14'),
+                         datetime.datetime(2003, 2, 1, 12, 13, 14))
+        self.assertEqual(str2isodatestr('01/02/2003T12:13:14', '%Y%m%d%H%M%S'),
+                         '20030201121314')
+        self.assertEqual(str2isodatestr('2003-02-01T12:13:14', '%Y-%m-%d %H:%M:%S'),
+                         '2003-02-01 12:13:14')
+        self.assertEqual(str2isodatestr('01-02-03T12:13:14', '%Y-%m-%d %H:%M:%S'),
+                         '2003-02-01 12:13:14')
+        # Check we raise exceptions for unknown date formats...
+        with self.assertRaises(Exception):
+            str2isodatestr('', '%Y%m%d%H%M%S')
+        with self.assertRaises(Exception):
+            str2isodatestr(None, '%Y%m%d%H%M%S')
 
     def test_create_database_creation(self):
         d, path = self.make_me_a_new_database()

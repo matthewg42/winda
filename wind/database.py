@@ -4,6 +4,7 @@ import sqlite3
 import os
 import logging
 import glob
+import re
 from datetime import datetime
 from wind.inputfile import InputFile
 
@@ -23,7 +24,44 @@ def result_headers(cursor):
     for idx, col in enumerate(cursor.description):
         result.append(col[0])
     return result
+
+def str2datetime(s):
+    fmt = None
+    s = s.replace('/', '-')
+    s = s.replace(' ', 'T')
+
+    # e.g. '14/08/2014T12:13:14'
+    m = re.match('^(\d\d)-(\d\d)-(\d\d\d\d)T(\d\d):(\d\d):(\d\d)$', s)
+    if m:
+        fmt = '%d-%m-%YT%H:%M:%S'
+
+    # e.g. '14/08/14T12:13:14'
+    m = re.match('^(\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)$', s)
+    if m:
+        fmt = '%d-%m-%yT%H:%M:%S'
+
+    # e.g. '2014-08-14T12:13:14'
+    m = re.match('^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)$', s)
+    if m:
+        fmt = '%Y-%m-%dT%H:%M:%S'
+
+    # e.g. '20140814T12:13:14'
+    m = re.match('^(\d\d\d\d)(\d\d)(\d\d)T(\d\d):(\d\d):(\d\d)$', s)
+    if m:
+        fmt = '%Y%m%dT%H:%M:%S'
+
+    if fmt:
+        #log.debug('str2datetime(%s) interpretting as %s' % (s, fmt))
+        return datetime.strptime(s, fmt)
+    else:
+        raise Exception('str2datetime: Could not determine date format for: %s' % s)
     
+def str2isodatestr(s, fmt):
+    dt = str2datetime(s)
+    if type(dt) is datetime:
+        return dt.strftime(fmt)
+    raise Exception('str2isodatestr: bad datetime returned type: %s' % type(dt))
+
 class Database:
     def __init__(self, path):
         """ 
@@ -338,15 +376,21 @@ class Database:
                                 record['direction'],
                                 record['irradiance'],
                                 record['batt_v'],
-                                datetime.strptime("%sT%s" % (record['dt'], record['tm']), "%d-%m-%YT%H:%M:%S")
+                                str2isodatestr('%sT%s' % (record['dt'], record['tm']),
+                                               '%Y-%m-%d %T')
                                ))
             except Exception as e:
                 log.warning('Database.add_file, failed to add record: %s, exception: %s' % (record, e))
                 error_count += 1
-        # Update input_file record to reflect 
-        c.execute("""UPDATE input_file SET records = ?, errors = ? WHERE path = ?""", (record_count, error_count, path))
-        self.commit(c)
-        self.process_file(file_id)
+        if record_count == 0:
+            log.warning('Database.add_file: no records were added')
+            c.execute('DELETE FROM input_file WHERE path = ?', (path,))
+            self.commit(c)
+        else:
+            # Update input_file record to reflect 
+            c.execute("""UPDATE input_file SET records = ?, errors = ? WHERE path = ?""", (record_count, error_count, path))
+            self.commit(c)
+            self.process_file(file_id)
 
     def process_file(self, file_id):
         q = self._conn.cursor()
@@ -416,11 +460,12 @@ class Database:
                           )
                           VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )
                           """, subs)
-                        
+                c.execute("""UPDATE raw_data SET processed = 1 WHERE rowid = ?""", (r[7],))
                 prev_ts = ts
+            except KeyError as e:
+                log.error('Failed to add event because of a missing dependency (did you add calibration for ref %s?)' % r[1])
             except Exception as e:
-                log.warning('Failed to add event: %s / %s' % (type(e), e))
-            c.execute("""UPDATE raw_data SET processed = 1 WHERE rowid = ?""", (r[7],))
+                log.exception('Failed to add event: %s / %s' % (type(e), e))
         c.execute('commit')
 
     def get_calibration(self):

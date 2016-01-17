@@ -377,7 +377,7 @@ class Database:
                                 record['irradiance'],
                                 record['batt_v'],
                                 str2isodatestr('%sT%s' % (record['dt'], record['tm']),
-                                               '%Y-%m-%d %T')
+                                               '%Y-%m-%d %H:%M:%S')
                                ))
             except Exception as e:
                 log.warning('Database.add_file, failed to add record: %s, exception: %s' % (record, e))

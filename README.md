@@ -45,32 +45,49 @@ A single Python program named "winda.py" which will maintain a database of recor
 
 Windows:
 
-    winda.exe command [command-args]
+    winda command [command-args]
 
 For example:
 
-    winda.exe add *.CSV
+    winda add *.CSV
 
 
 ## Synopsis
 
 Some example commands to give a quick overview of usage:
 
-    winda.exe add *.CSV
-    winda.exe files
-    winda.exe files P15*.CSV
-    winda.exe remove --file P1506*.CSV
-    winda.exe remove --date 150601
-    winda.exe speeds --date 150602 > June_2_speeds.csv
-    winda.exe speeds --date 150602 --direction-split > June_2_speeds_and_directions.csv
-    winda.exe speeds --file P150602.CSV > june_2_speeds.csv
-    winda.exe speeds --increment 5 --file P1506*.CSV > june_speeds_5ms_increments.csv
-    winda.exe speeds --range 0-30 --date 150601 > june_1_speeds_to_30_ms.csv
-    winda.exe speeds --range 20-40 --increment 0.25 --from 150601 --to 150630 > out.csv
-    winda.exe export all_data.csv
-    winda.exe export -date 150601 some_data.csv
-    winda.exe reset
-    winda.exe info
+    winda add *.CSV
+    winda show files
+    winda show files P15*.CSV
+    winda show calibration
+    winda show calibration BB
+    winda calibrate AA 1.42 1.44 100 1.0 1500
+    winda speeds --date 2015-06-02 > June_2_speeds.csv
+    winda speeds --date 2015-06-02 --dir > June_2_speeds_and_directions.csv
+    winda speeds --file P150602.CSV > june_2_speeds.csv
+    winda speeds --increment 5 --file P1506*.CSV > june_speeds_5ms_increments.csv
+    winda speeds --range 0-30 --date 150601 > june_1_speeds_to_30_ms.csv
+    winda speeds --range 20-40 --increment 0.25 --from 150601 --to 150630 > out.csv
+    winda export > all_data.csv
+    winda export --date 150601 > some_data.csv
+    winda info
+    winda reset
+
+Still to implement: 
+
+    winda remove --file P1506*.CSV
+    winda remove --date 150601
+
+Really useful:
+
+    winda --help
+    winda add --help
+    winda show --help
+    winda calibrate --help
+    winda speeds --help
+    winda export --help
+    winda info --help
+    winda reset --help
 
 ## Commands
 
@@ -78,13 +95,11 @@ Some example commands to give a quick overview of usage:
 
 #### Syntax
 
-    winda.exe add pattern [pattern ...]
+    winda add pattern [pattern ...]
 
 #### Description
 
-Add data file(s) to the database. This command output the number of records added like this:
-
-    1440 records added from 1 file(s).
+Add data file(s) to the database. Will not re-add a file which has already been added. Errors may be printed indicating trouble processing records from a file.  If no records were added to the database, the file is not considered to have been added, and another attempt may be made.
 
 #### Command arguments
 
@@ -92,39 +107,57 @@ This command requires at least one argument - the name of a file to add, or a gl
 
 #### Example
 
-    winda.exe add *.CSV
+    winda add *.CSV
 
-### Command: files
+### Command: show files
 
 #### Syntax
 
-    winda.exe files [pattern]
+    winda show files [pattern]
 
 #### Description
 
-List files which have been added to the database. For example, the output might look like this:
-
-    P150603.CSV
-    P150604.CSV
-    P150605.CSV
+Shows information about files which have been added to the database.
 
 #### Command arguments
 
-This command takes an optional argument which is a glob pattern to filter the output.  If no pattern is specified, all files which have been added to the database are listed.
+If a glob pattern is provided, only files matching that pattern are listed.
 
 #### Examples
 
-    winda.exe P15*.CSV
+    winda show files
+    winda show files P15*.CSV
 
-### Command: remove
+### Command: show calibration
 
 #### Syntax
 
-    winda.exe remove|rm <filter>
+    winda show calibration [ref]
 
 #### Description
 
-Remove data from from the database according to some filter critera. See section "Data Filters" below for how to use a filter.
+Shows information about calibration of sensors by ref value.
+
+#### Command arguments
+
+If ref is specified, only that sensor is listed in the output.
+
+#### Examples
+
+    winda show calibration 
+    winda show calibration BB
+
+### Command: remove
+
+NOTE: not implemented yet
+
+#### Syntax
+
+    winda remove|rm <filter>
+
+#### Description
+
+Remove data from from the database according to some filter critera. See section "Data Filters" below for how to use a filter. Note that when removing by date or date range, the file will only be removed once all records in event and raw\_data have been removed for that file.
 
 #### Command arguments
 
@@ -132,16 +165,15 @@ The remove command must be supplied with a valid data filter. See section "Data 
 
 #### Examples
 
-    winda.exe remove --all
-    winda.exe remove --file P1506*.CSV
-    winda.exe remove --date 150601
-    winda.exe remove --from 150601 --to 150701
+    winda remove --file P1506*.CSV
+    winda remove --date 150601
+    winda remove --from 150601 --to 150701
 
 ### Command: speeds
 
 #### Syntax
 
-    winda.exe speeds [--range r] [--increment i] [--direction-split] <filter>
+    winda speeds [--range r] [--increment i] [--direction-split] <filter>
 
 #### Description
 
@@ -159,7 +191,7 @@ The command may also take an optional "--range r" value which specifies the rang
 
 The command may also take an optional "--increment i" value which specifies the increment used to split the output.  The --increment parameter, *i* is a decimal value which defines the step size, for example:
 
-    --increment=1.5
+    --increment 1.5
 
 ...to output in 1.5 m/s steps.
 
@@ -167,34 +199,42 @@ The command may also take an optional [--direction-split] argument, which will d
 
 #### Examples
 
-    winda.exe speed --all
-    winda.exe speed --increment 5 --file P1506*.CSV
-    winda.exe speed --date 150601
-    winda.exe speed --range 20-40 --increment 0.25 --from 150601 --to 150701
+    winda speed --all
+    winda speed --increment 5 --file P1506*.CSV
+    winda speed --date 150601
+    winda speed --range 20-40 --increment 0.25 --from 150601 --to 150701
 
 ### Command: export
 
 #### Syntax
 
-    winda.exe export <filter> file.csv
+    winda export <filter> 
 
 #### Description
 
-Dump data from the database into a specified file. If the file already exists, a prompt for confirmation will be displayed.
+Dump data from the database to stadard output in CSV format.  The following fields are included:
+
+*   ref
+*   event\_start
+*   event\_end
+*   windspeed\_ms\_1
+*   windspeed\_ms\_2
+*   wind\_direction
+*   irradiance\_wm2
 
 #### Command Arguments
 
-This command takes one or more filter arguments, and the name of the CSV file to write to.
+This command may take one or more filter arguments to limit the output to just records matching those arguments.  If no filter arguments are provided, all data is exported.
 
 #### Example
 
-    winda.exe export --all dump.csv
+    winda export dump.csv
 
 ### Command: reset
 
 #### Syntax
 
-    winda.exe reset
+    winda reset
 
 #### Description
 
@@ -206,13 +246,13 @@ This command does not take any arguments.
 
 #### Example
 
-    winda.exe reset
+    winda reset
 
 ### Command: info
 
 #### Syntax
 
-    winda.exe info
+    winda info
 
 #### Description
 
@@ -229,8 +269,7 @@ This command does not take any arguments.
 
 #### Example
 
-    winda.exe info
-
+    winda info
 
 ## Data Filters
 

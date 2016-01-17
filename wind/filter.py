@@ -70,27 +70,27 @@ class Filter:
                                AND           event_end <= ?
                            )
                            """, (self.from_filter.strftime('%Y-%m-%d %T'),
-                                 self.from_filter.strftime('%Y-%m-%d %T')))
+                                 self.to_filter.strftime('%Y-%m-%d %T')))
         elif self.from_filter is not None and self.to_filter is None:
             cursor.execute("""
                            DELETE FROM tmp_event_rids
                            WHERE NOT EXISTS (
                                SELECT        1
-                               FROM          event
+                               FROM          event e
                                WHERE         rid = e.rowid
                                AND           event_end >= ?
                            )
                            """, (self.from_filter.strftime('%Y-%m-%d %T'),))
-        elif self.from_filter is not None and self.to_filter is None:
+        elif self.from_filter is None and self.to_filter is not None:
             cursor.execute("""
                            DELETE FROM tmp_event_rids
                            WHERE NOT EXISTS (
                                SELECT        1
-                               FROM          event
+                               FROM          event e
                                WHERE         rid = e.rowid
-                               AND           event_end >= ?
+                               AND           event_end <= ?
                            )
-                           """, (self.from_filter.strftime('%Y-%m-%d %T'),))
+                           """, (self.to_filter.strftime('%Y-%m-%d %T'),))
         log.debug('Events selected after from_filter(%s) to_filter(%s): %d' % (
                     str(self.from_filter), str(self.to_filter), self.count_selected_events(cursor)))
 

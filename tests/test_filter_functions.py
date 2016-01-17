@@ -3,6 +3,7 @@ import os
 import tempfile
 from wind.database import Database
 from wind.filter import Filter
+import datetime
 
 class TestFilterFunctions(unittest.TestCase):
     @classmethod
@@ -52,4 +53,44 @@ BB,13-01-2016,19:34:17,1,2,SW,0.50,4.72
         events = filt.select_events(c)
         self.assertEqual(len(events), 0)
 
-        
+    def test_date_filter(self):
+        c = self._db._conn.cursor()
+        filt = Filter(date_filter=datetime.date(2016, 1, 12))
+        events = filt.select_events(c)
+        self.assertEqual(len(events), 4)
+        filt = Filter(date_filter=datetime.date(2016, 1, 13))
+        events = filt.select_events(c)
+        self.assertEqual(len(events), 5)
+        filt = Filter(date_filter=datetime.date(2016, 1, 14))
+        events = filt.select_events(c)
+        self.assertEqual(len(events), 0)
+
+    def test_from_only_filter(self):
+        c = self._db._conn.cursor()  # 12-01-2016,19:34:16,
+        filt = Filter(from_filter=datetime.datetime(2016, 1, 12, 19, 34, 16))
+        events = filt.select_events(c)
+        self.assertEqual(len(events), 7)
+
+    def test_to_only_filter(self):
+        c = self._db._conn.cursor()  # 12-01-2016,19:34:16,
+        filt = Filter(to_filter=datetime.datetime(2016, 1, 12, 19, 34, 16))
+        events = filt.select_events(c)
+        self.assertEqual(len(events), 3)
+
+    def test_from_and_to_filter(self):
+        c = self._db._conn.cursor()  # 12-01-2016,19:34:16,
+        filt = Filter(from_filter=datetime.datetime(2016, 1, 12, 19, 34, 16),
+                      to_filter=datetime.datetime(2016, 1, 13, 19, 34, 15)
+                    )
+        events = filt.select_events(c)
+        self.assertEqual(len(events), 5)
+
+    def test_multiple_filters(self):
+        c = self._db._conn.cursor()  # 12-01-2016,19:34:16,
+        filt = Filter(date_filter=datetime.date(2016, 1, 12),
+                      from_filter=datetime.datetime(2016, 1, 12, 19, 34, 16),
+                      to_filter=datetime.datetime(2016, 1, 13, 19, 34, 15)
+                    )
+        events = filt.select_events(c)
+        self.assertEqual(len(events), 2)
+

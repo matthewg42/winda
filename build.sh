@@ -1,5 +1,5 @@
 #!/bin/bash
 
-rm -rf dist
+rm -rf dist build
 python setup.py py2exe
 

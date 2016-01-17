@@ -23,6 +23,11 @@ class Filter:
         self.cursor.execute("""INSERT INTO tmp_event_rids SELECT rowid FROM event""")
         self.cursor.execute("""CREATE TEMP TABLE tmp_raw_data_rids (rid INT)""")
         self.cursor.execute("""INSERT INTO tmp_raw_data_rids SELECT rowid FROM raw_data""")
+        log.debug('Filter created: file=%s date=%s from=%s to=%s' % (
+                    str(self.file_filter),
+                    str(self.date_filter),
+                    str(self.from_filter),
+                    str(self.to_filter)))
 
     def __del__(self):
         self.cursor.execute("""DROP TABLE IF EXISTS tmp_event_rids""")

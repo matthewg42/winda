@@ -187,6 +187,24 @@ def calibrate(args):
                         args.max_irradiance))
     d.commit()
 
+def show_calibration(args):
+    log.debug('show_calibration(%s)' % args.ref)
+    d = Database(args.database_path)
+    c = d._conn.cursor()
+    c.execute("""
+              SELECT     ref, anemometer_1_factor, anemometer_2_factor, 
+                         max_windspeed_ms, irradiance_factor, max_irradiance 
+              FROM       calibration 
+              WHERE      ref LIKE ?
+              ORDER BY   ref
+              """, (args.ref,))
+    headers = result_headers(c)
+    headerlen = [len(h) for h in headers]
+    print(' '.join(headers))
+    print(' '.join(['-' * hl for hl in headerlen]))
+    for r in c.fetchall():
+        print('%-3s %19.3f %19.3f %16.3f %17.3f %14.3f' % tuple(r))
+
 #############
 def add_data_filters(parser):
     parser.add_argument('--files', dest='file_filter', type=str, default=None,
@@ -310,6 +328,15 @@ if __name__ == '__main__':
     parser_calibrate.add_argument('irradiance_factor', type=float, help='Value of irradiance_factor, e.g. "1.0"')
     parser_calibrate.add_argument('max_irradiance', type=float, help='Value of max_irradiance, e.g. "1500"')
     parser_calibrate.set_defaults(func=calibrate)
+
+    # Show command
+    parser_show = subparsers.add_parser('show', help='Show various things')
+    show_subparsers = parser_show.add_subparsers()
+    
+    # show calibration command
+    parser_show_calibration = show_subparsers.add_parser('calibration', help='Show current calibration(s)')
+    parser_show_calibration.add_argument('ref', type=str, nargs='?', default='%', help='Filter by this ref')
+    parser_show_calibration.set_defaults(func=show_calibration)
 
     # Do it!
     args = parser.parse_args()

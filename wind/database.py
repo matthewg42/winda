@@ -31,22 +31,22 @@ def str2datetime(s):
     s = s.replace(' ', 'T')
 
     # e.g. '14/08/2014T12:13:14'
-    m = re.match('^(\d\d)-(\d\d)-(\d\d\d\d)T(\d\d):(\d\d):(\d\d)$', s)
+    m = re.match('^(\d\d)-(\d\d)-(\d\d\d\d)T(\d\d?):(\d\d):(\d\d)$', s)
     if m:
         fmt = '%d-%m-%YT%H:%M:%S'
 
     # e.g. '14/08/14T12:13:14'
-    m = re.match('^(\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)$', s)
+    m = re.match('^(\d\d)-(\d\d)-(\d\d)T(\d\d?):(\d\d):(\d\d)$', s)
     if m:
         fmt = '%d-%m-%yT%H:%M:%S'
 
     # e.g. '2014-08-14T12:13:14'
-    m = re.match('^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)$', s)
+    m = re.match('^(\d\d\d\d)-(\d\d)-(\d\d)T(\d\d?):(\d\d):(\d\d)$', s)
     if m:
         fmt = '%Y-%m-%dT%H:%M:%S'
 
     # e.g. '20140814T12:13:14'
-    m = re.match('^(\d\d\d\d)(\d\d)(\d\d)T(\d\d):(\d\d):(\d\d)$', s)
+    m = re.match('^(\d\d\d\d)(\d\d)(\d\d)T(\d\d?):(\d\d):(\d\d)$', s)
     if m:
         fmt = '%Y%m%dT%H:%M:%S'
 
@@ -333,7 +333,7 @@ class Database:
             c.execute("""INSERT INTO input_file (path, import_date, records, errors)
                          VALUES (?, ?, NULL, NULL)""", (path, datetime.now()))
         except sqlite3.IntegrityError as e:
-            log.error('%s : perhaps this file has already been added to the database?' % e)
+            log.error('%s : perhaps the file %s has already been added to the database?' % (e, path))
             return False
         except Exception as e:
             log.error('Unexpected exception: %s / %s' % (type(e), e))

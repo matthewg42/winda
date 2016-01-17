@@ -50,7 +50,7 @@ def add_files(args):
     d = Database(args.database_path)
     d.add(args.files)
 
-def list_files(args):
+def show_files(args):
     d = Database(args.database_path)
 
     def want(path, patterns):
@@ -146,6 +146,64 @@ def export_data(args):
     for r in c.fetchall():
         print(','.join([str(i) for i in list(r)]))
 
+def calibrate(args):
+    log.debug('calibrate(%s)' % args.ref)
+    d = Database(args.database_path)
+    c = d._conn.cursor()
+    c.execute("""SELECT 1 FROM calibration WHERE ref = ?""", (args.ref,))
+    if len(c.fetchall()) > 0:
+        log.debug('calibrate() updating existing record for ref %s' % args.ref)
+        c.execute("""
+                  UPDATE        calibration
+                  SET           anemometer_1_factor = ?,
+                                anemometer_2_factor = ?,
+                                max_windspeed_ms = ?,
+                                irradiance_factor = ?,
+                                max_irradiance = ?
+                  WHERE         ref = ?
+                  """, (args.anemometer_1_factor,
+                        args.anemometer_2_factor,
+                        args.max_windspeed_ms,
+                        args.irradiance_factor,
+                        args.max_irradiance,
+                        args.ref))
+    else:
+        log.debug('calibrate() inserting new record for ref %s' % args.ref)
+        c.execute("""
+                  INSERT INTO   calibration (
+                                ref, 
+                                anemometer_1_factor, 
+                                anemometer_2_factor, 
+                                max_windspeed_ms, 
+                                irradiance_factor, 
+                                max_irradiance
+                  )
+                  VALUES        ( ?, ?, ?, ?, ?, ? )
+                  """, (args.ref, 
+                        args.anemometer_1_factor,
+                        args.anemometer_2_factor,
+                        args.max_windspeed_ms,
+                        args.irradiance_factor,
+                        args.max_irradiance))
+    d.commit()
+
+def show_calibration(args):
+    log.debug('show_calibration(%s)' % args.ref)
+    d = Database(args.database_path)
+    c = d._conn.cursor()
+    c.execute("""
+              SELECT     ref, anemometer_1_factor, anemometer_2_factor, 
+                         max_windspeed_ms, irradiance_factor, max_irradiance 
+              FROM       calibration 
+              WHERE      ref LIKE ?
+              ORDER BY   ref
+              """, (args.ref,))
+    headers = result_headers(c)
+    headerlen = [len(h) for h in headers]
+    print(' '.join(headers))
+    print(' '.join(['-' * hl for hl in headerlen]))
+    for r in c.fetchall():
+        print('%-3s %19.3f %19.3f %16.3f %17.3f %14.3f' % tuple(r))
 
 #############
 def add_data_filters(parser):
@@ -235,11 +293,6 @@ if __name__ == '__main__':
                    help='file name or glob pattern to add to database')
     parser_add.set_defaults(func=add_files)
 
-    # Files command
-    parser_files = subparsers.add_parser('files', help='List files which have been added to the database')
-    add_files_option(parser_files)
-    parser_files.set_defaults(func=list_files)
-
     # Remove command
     parser_remove = subparsers.add_parser('remove', help='Remove data from the database')
     add_data_filters(parser_remove)
@@ -261,9 +314,31 @@ if __name__ == '__main__':
     add_data_filters(parser_export)
     parser_export.set_defaults(func=export_data)
 
-    # create the parser for the "b" command
-    # parser_b = subparsers.add_parser('b', help='b help')
-    # parser_b.add_argument('--baz', choices='XYZ', help='baz help')
+    # Calibrate command
+    parser_calibrate = subparsers.add_parser('calibrate', help='Calibrate a sensor/Ref')
+    parser_calibrate.add_argument('ref', help='Value of ref, e.g. "BB"')
+    parser_calibrate.add_argument('anemometer_1_factor', type=float, help='Value of anemometer_1_factor, e.g. "1.42"')
+    parser_calibrate.add_argument('anemometer_2_factor', type=float, help='Value of anemometer_2_factor, e.g. "1.42"')
+    parser_calibrate.add_argument('max_windspeed_ms', type=float, help='Value of max_windspeed_ms, e.g. "100"')
+    parser_calibrate.add_argument('irradiance_factor', type=float, help='Value of irradiance_factor, e.g. "1.0"')
+    parser_calibrate.add_argument('max_irradiance', type=float, help='Value of max_irradiance, e.g. "1500"')
+    parser_calibrate.set_defaults(func=calibrate)
+
+    # Show command
+    parser_show = subparsers.add_parser('show', help='Show various things')
+    show_subparsers = parser_show.add_subparsers()
+    
+    # show calibration command
+    parser_show_calibration = show_subparsers.add_parser('calibration', help='Show current calibration(s)')
+    parser_show_calibration.add_argument('ref', type=str, nargs='?', default='%', help='Filter by this ref')
+    parser_show_calibration.set_defaults(func=show_calibration)
+
+    # show files command
+    parser_show_files = show_subparsers.add_parser('files', help='Show files in the database') 
+    add_files_option(parser_show_files)
+    parser_show_files.set_defaults(func=show_files)
+
+    # Do it!
     args = parser.parse_args()
     init_log()
     if not hasattr(args, 'func'):

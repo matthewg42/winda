@@ -146,6 +146,46 @@ def export_data(args):
     for r in c.fetchall():
         print(','.join([str(i) for i in list(r)]))
 
+def calibrate(args):
+    log.debug('calibrate(%s)' % args.ref)
+    d = Database(args.database_path)
+    c = d._conn.cursor()
+    c.execute("""SELECT 1 FROM calibration WHERE ref = ?""", (args.ref,))
+    if len(c.fetchall()) > 0:
+        log.debug('calibrate() updating existing record for ref %s' % args.ref)
+        c.execute("""
+                  UPDATE        calibration
+                  SET           anemometer_1_factor = ?,
+                                anemometer_2_factor = ?,
+                                max_windspeed_ms = ?,
+                                irradiance_factor = ?,
+                                max_irradiance = ?
+                  WHERE         ref = ?
+                  """, (args.anemometer_1_factor,
+                        args.anemometer_2_factor,
+                        args.max_windspeed_ms,
+                        args.irradiance_factor,
+                        args.max_irradiance,
+                        args.ref))
+    else:
+        log.debug('calibrate() inserting new record for ref %s' % args.ref)
+        c.execute("""
+                  INSERT INTO   calibration (
+                                ref, 
+                                anemometer_1_factor, 
+                                anemometer_2_factor, 
+                                max_windspeed_ms, 
+                                irradiance_factor, 
+                                max_irradiance
+                  )
+                  VALUES        ( ?, ?, ?, ?, ?, ? )
+                  """, (args.ref, 
+                        args.anemometer_1_factor,
+                        args.anemometer_2_factor,
+                        args.max_windspeed_ms,
+                        args.irradiance_factor,
+                        args.max_irradiance))
+    d.commit()
 
 #############
 def add_data_filters(parser):
@@ -261,9 +301,17 @@ if __name__ == '__main__':
     add_data_filters(parser_export)
     parser_export.set_defaults(func=export_data)
 
-    # create the parser for the "b" command
-    # parser_b = subparsers.add_parser('b', help='b help')
-    # parser_b.add_argument('--baz', choices='XYZ', help='baz help')
+    # Calibrate command
+    parser_calibrate = subparsers.add_parser('calibrate', help='Calibrate a sensor/Ref')
+    parser_calibrate.add_argument('ref', help='Value of ref, e.g. "BB"')
+    parser_calibrate.add_argument('anemometer_1_factor', type=float, help='Value of anemometer_1_factor, e.g. "1.42"')
+    parser_calibrate.add_argument('anemometer_2_factor', type=float, help='Value of anemometer_2_factor, e.g. "1.42"')
+    parser_calibrate.add_argument('max_windspeed_ms', type=float, help='Value of max_windspeed_ms, e.g. "100"')
+    parser_calibrate.add_argument('irradiance_factor', type=float, help='Value of irradiance_factor, e.g. "1.0"')
+    parser_calibrate.add_argument('max_irradiance', type=float, help='Value of max_irradiance, e.g. "1500"')
+    parser_calibrate.set_defaults(func=calibrate)
+
+    # Do it!
     args = parser.parse_args()
     init_log()
     if not hasattr(args, 'func'):

@@ -173,7 +173,7 @@ The remove command must be supplied with a valid data filter. See section "Data 
 
 #### Syntax
 
-    winda speeds [--range r] [--increment i] [--direction-split] <filter>
+    winda speeds [--range r] [--increment i] [--direction-split] [--2] <filter>
 
 #### Description
 
@@ -197,18 +197,20 @@ The command may also take an optional "--increment i" value which specifies the 
 
 The command may also take an optional [--direction-split] argument, which will do one analysis per wind direction in the input data.  The output will have an addition column with the windo direction in it.
 
+The command may also take an optional [--2] argument which will tell winda to take data from the second windspeed device.
+
 #### Examples
 
     winda speed 
     winda speed --increment 5 --file P1506*.CSV
-    winda speed --date 150601
+    winda speed --date 150601 --2
     winda speed --range 20-40 --increment 0.25 --from 150601 --to 150701
 
 ### Command: average
 
 #### Syntax
 
-    winda average [--direction-split] <filter>
+    winda average [--direction-split] [--2] <filter>
 
 #### Description
 
@@ -220,9 +222,12 @@ The average command must be supplied with a valid data filter. See section "Data
 
 The command may also take an optional [--direction-split] argument, which will split the output by wind direction.
 
+The command may also take an optional [--2] argument which will tell winda to take data from the second windspeed device.
+
 #### Examples
 
     winda average 
+    winda average --2
     winda average --direction-split
     winda average --date 150601
     winda average --from 150601 --to 150701 --dir

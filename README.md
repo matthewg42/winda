@@ -199,7 +199,7 @@ The command may also take an optional [--direction-split] argument, which will d
 
 #### Examples
 
-    winda speed --all
+    winda speed 
     winda speed --increment 5 --file P1506*.CSV
     winda speed --date 150601
     winda speed --range 20-40 --increment 0.25 --from 150601 --to 150701

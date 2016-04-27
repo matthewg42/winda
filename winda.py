@@ -357,7 +357,7 @@ if __name__ == '__main__':
     parser_remove.set_defaults(func=remove_data)
 
     # Speeds command
-    parser_speeds = subparsers.add_parser('speeds', help='Remove data from the database')
+    parser_speeds = subparsers.add_parser('speeds', help='Output wind speed transform')
     parser_speeds.add_argument('--direction-split', dest='split', action='store_const', const=True, 
         default=False, help='Add a wind direction column to the output and perform the analysis for each wind direction found in the selected data')
     parser_speeds.add_argument('--range', dest='range', type=str, default='0-40', 

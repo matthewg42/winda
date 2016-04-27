@@ -185,6 +185,37 @@ def export_speeds(args):
             result_csv.append('%.2f,%.2f,%.4f' % (r[0], r[1], float(r[2])/float(total)))
     print('\n'.join(result_csv))
 
+def export_average(args):
+    d = Database(args.database_path)
+    c = d._conn.cursor()
+    filt = generate_filter(args, c)
+    filt.select_events()
+    wind_field = 'windspeed_ms_%d' % args.anemometer_no
+    if args.split:
+        c.execute("""
+                  SELECT          wind_direction, avg(%s)
+                  FROM            event e
+                  WHERE           EXISTS (
+                      SELECT        1
+                      FROM          tmp_event_rids t
+                      WHERE         t.rid = e.rowid
+                  )
+                  GROUP BY wind_direction
+                  """ % wind_field)
+    else:
+        c.execute("""
+                  SELECT          avg(%s)
+                  FROM            event e
+                  WHERE           EXISTS (
+                      SELECT        1
+                      FROM          tmp_event_rids t
+                      WHERE         t.rid = e.rowid
+                  )
+                  """ % wind_field)
+    print(','.join(result_headers(c)))
+    for r in c.fetchall():
+        print(','.join([str(i) for i in list(r)]))
+
 def export_data(args):
     d = Database(args.database_path)
     c = d._conn.cursor()
@@ -368,6 +399,15 @@ if __name__ == '__main__':
         help='Use data from the second anemometer (the first is the default)')
     add_data_filters(parser_speeds)
     parser_speeds.set_defaults(func=export_speeds)
+
+    # Average command
+    parser_average = subparsers.add_parser('average', help='Output average (mean) wind speed')
+    parser_average.add_argument('--direction-split', dest='split', action='store_const', const=True, 
+        default=False, help='Add a wind direction column to the output and perform the analysis for each wind direction found in the selected data')
+    parser_average.add_argument('--2', dest='anemometer_no', action='store_const', const=2, default=1, 
+        help='Use data from the second anemometer (the first is the default)')
+    add_data_filters(parser_average)
+    parser_average.set_defaults(func=export_average)
 
     # Export command
     parser_export = subparsers.add_parser('export', help='Remove data from the database')

@@ -68,6 +68,9 @@ Some example commands to give a quick overview of usage:
     winda speeds --increment 5 --file P1506*.CSV > june_speeds_5ms_increments.csv
     winda speeds --range 0-30 --date 150601 > june_1_speeds_to_30_ms.csv
     winda speeds --range 20-40 --increment 0.25 --from 150601 --to 150630 > out.csv
+    winda average
+    winda average --date 2015-06-02
+    winda average --dir --date 2015-06-02
     winda export > all_data.csv
     winda export --date 150601 > some_data.csv
     winda remove --file P1506*.CSV
@@ -82,6 +85,7 @@ Really useful:
     winda show --help
     winda calibrate --help
     winda speeds --help
+    winda average --help
     winda export --help
     winda remove --help
     winda info --help
@@ -199,6 +203,29 @@ The command may also take an optional [--direction-split] argument, which will d
     winda speed --increment 5 --file P1506*.CSV
     winda speed --date 150601
     winda speed --range 20-40 --increment 0.25 --from 150601 --to 150701
+
+### Command: average
+
+#### Syntax
+
+    winda average [--direction-split] <filter>
+
+#### Description
+
+Analyse data from the database, outputting the average (mean) wind speed for all records matching <filter>, optinally split by wind direction.
+
+#### Command arguments
+
+The average command must be supplied with a valid data filter. See section "Data Filters" below for how to use a filter.  
+
+The command may also take an optional [--direction-split] argument, which will split the output by wind direction.
+
+#### Examples
+
+    winda average 
+    winda average --direction-split
+    winda average --date 150601
+    winda average --from 150601 --to 150701 --dir
 
 ### Command: export
 

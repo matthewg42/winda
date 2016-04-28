@@ -2,6 +2,8 @@ import logging
 from wind.database import result_as_dict_array
 
 log = logging
+# curiously, can't use %T because windows version doesn't recognise it...
+sqlite_datefmt = '%Y-%m-%d %H:%M:%S'
 
 """ Class which describes data filters """
 class Filter:
@@ -80,8 +82,8 @@ class Filter:
                                AND           event_end >= ?
                                AND           event_end <= ?
                            )
-                           """, (self.from_filter.strftime('%Y-%m-%d %T'),
-                                 self.to_filter.strftime('%Y-%m-%d %T')))
+                           """, (self.from_filter.strftime(sqlite_datefmt),
+                                 self.to_filter.strftime(sqlite_datefmt)))
         elif self.from_filter is not None and self.to_filter is None:
             self.cursor.execute("""
                            DELETE FROM tmp_event_rids
@@ -91,7 +93,7 @@ class Filter:
                                WHERE         rid = e.rowid
                                AND           event_end >= ?
                            )
-                           """, (self.from_filter.strftime('%Y-%m-%d %T'),))
+                           """, (self.from_filter.strftime(sqlite_datefmt),))
         elif self.from_filter is None and self.to_filter is not None:
             self.cursor.execute("""
                            DELETE FROM tmp_event_rids
@@ -101,7 +103,7 @@ class Filter:
                                WHERE         rid = e.rowid
                                AND           event_end <= ?
                            )
-                           """, (self.to_filter.strftime('%Y-%m-%d %T'),))
+                           """, (self.to_filter.strftime(sqlite_datefmt),))
         log.debug('Events selected after from_filter(%s) to_filter(%s): %d' % (
                     str(self.from_filter), str(self.to_filter), self.count_selected_events()))
 
@@ -173,8 +175,8 @@ class Filter:
                                AND           ts >= ?
                                AND           ts <= ?
                            )
-                           """, (self.from_filter.strftime('%Y-%m-%d %T'),
-                                 self.to_filter.strftime('%Y-%m-%d %T')))
+                           """, (self.from_filter.strftime(sqlite_datefmt),
+                                 self.to_filter.strftime(sqlite_datefmt)))
         elif self.from_filter is not None and self.to_filter is None:
             self.cursor.execute("""
                            DELETE FROM tmp_raw_data_rids
@@ -184,7 +186,7 @@ class Filter:
                                WHERE         rid = r.rowid
                                AND           ts >= ?
                            )
-                           """, (self.from_filter.strftime('%Y-%m-%d %T'),))
+                           """, (self.from_filter.strftime(sqlite_datefmt),))
         elif self.from_filter is None and self.to_filter is not None:
             self.cursor.execute("""
                            DELETE FROM tmp_raw_data_rids
@@ -194,7 +196,7 @@ class Filter:
                                WHERE         rid = r.rowid
                                AND           ts <= ?
                            )
-                           """, (self.to_filter.strftime('%Y-%m-%d %T'),))
+                           """, (self.to_filter.strftime(sqlite_datefmt),))
         log.debug('Raw Data selected after from_filter(%s) to_filter(%s): %d' % (
                     str(self.from_filter), str(self.to_filter), self.count_selected_raw_data()))
 

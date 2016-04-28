@@ -21,7 +21,7 @@ class Filter:
         self.from_filter = from_filter
         self.to_filter = to_filter
         self.cursor = cursor
-        self.cursor.execute("""CREATE TEMP TABLE tmp_event_rids (rid INT)""")
+        self.cursor.execute("""CREATE TEMP TABLE tmp_event_rids (rid INT PRIMARY KEY)""")
         self.cursor.execute("""INSERT INTO tmp_event_rids SELECT rowid FROM event""")
         self.cursor.execute("""CREATE TEMP TABLE tmp_raw_data_rids (rid INT)""")
         self.cursor.execute("""INSERT INTO tmp_raw_data_rids SELECT rowid FROM raw_data""")

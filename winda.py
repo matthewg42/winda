@@ -193,24 +193,18 @@ def export_average(args):
     wind_field = 'windspeed_ms_%d' % args.anemometer_no
     if args.split:
         c.execute("""
-                  SELECT          wind_direction, avg(%s)
-                  FROM            event e
-                  WHERE           EXISTS (
-                      SELECT        1
-                      FROM          tmp_event_rids t
-                      WHERE         t.rid = e.rowid
-                  )
-                  GROUP BY wind_direction
+                  SELECT          wind_direction, avg(%s), count(1)
+                  FROM            event e,
+                                  tmp_event_rids t
+                  WHERE           t.rid = e.rowid
+                  GROUP BY        wind_direction
                   """ % wind_field)
     else:
         c.execute("""
-                  SELECT          avg(%s)
-                  FROM            event e
-                  WHERE           EXISTS (
-                      SELECT        1
-                      FROM          tmp_event_rids t
-                      WHERE         t.rid = e.rowid
-                  )
+                  SELECT          avg(%s), count(1)
+                  FROM            event e,
+                                  tmp_event_rids t
+                  WHERE           t.rid = e.rowid
                   """ % wind_field)
     print(','.join(result_headers(c)))
     for r in c.fetchall():
